@@ -19,5 +19,5 @@
     "strictPropertyInitialization": false,
     "typeRoots": ["./node_modules/@types"]
   },
-  "exclude": ["cdk.out","/global-rekognition-custom-labels/lib/lambda/process-manifest/node_modules", "**/*.spec.ts"]
+  "exclude": ["cdk.out","**/node_modules", "**/*.spec.ts"]
 }
