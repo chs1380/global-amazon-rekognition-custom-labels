@@ -134,9 +134,6 @@ export class GlobalRekognitionCustomLabelsStack extends cdk.Stack {
       ManagedPolicy.fromAwsManagedPolicyName("AmazonS3ReadOnlyAccess")
     );
 
-    trainingBucket.grantRead(buildModelFunction);
-    outputBucket.grantWrite(buildModelFunction);
-
     const buildModelDefaultIntegration = new LambdaProxyIntegration({
       handler: buildModelFunction,
     });
