@@ -13,6 +13,7 @@ export const lambdaHandler = async (
   // async/await.
   console.log(event);
   const projectName = event.queryStringParameters!["ProjectName"];
+  const manifestKey = event.queryStringParameters!["ManifestKey"];
   try {
     const rekognitionClient = new RekognitionClient({
       region: process.env.AWS_REGION,
@@ -24,21 +25,13 @@ export const lambdaHandler = async (
     const createProjectCommandOutput: CreateProjectCommandOutput = await rekognitionClient.send(
       createProjectCommand
     );
+
+    console.log(createProjectCommandOutput);
     const createProjectVersionCommand = new CreateProjectVersionCommand({
       ProjectArn: createProjectCommandOutput.ProjectArn!,
       VersionName: "first",
-      OutputConfig: {},
+      OutputConfig: { S3Bucket: process.env.bucket, S3KeyPrefix: "output" },
       TestingData: {
-        Assets: [
-          {
-            GroundTruthManifest: {
-              S3Object: {
-                Bucket: process.env.bucket,
-                Name: "output.manifest",
-              },
-            },
-          },
-        ],
         AutoCreate: true,
       },
       TrainingData: {
@@ -47,7 +40,7 @@ export const lambdaHandler = async (
             GroundTruthManifest: {
               S3Object: {
                 Bucket: process.env.bucket,
-                Name: "output.manifest",
+                Name: manifestKey,
               },
             },
           },
@@ -66,8 +59,10 @@ export const lambdaHandler = async (
     // process data.
   } catch (error) {
     console.error(error);
-    return error;
-    // error handling.
+    return {
+      statusCode: 200,
+      body: JSON.stringify(error),
+    };
   } finally {
     // finally.
     return "OK";

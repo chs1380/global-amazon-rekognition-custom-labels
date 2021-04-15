@@ -38,6 +38,18 @@ export class GlobalRekognitionCustomLabelsStack extends cdk.Stack {
         principals: [new iam.ServicePrincipal("rekognition.amazonaws.com")],
       })
     );
+    bucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        actions: ["s3:PutObject"],
+        resources: [bucket.arnForObjects("*")],
+        principals: [new iam.ServicePrincipal("rekognition.amazonaws.com")],
+        conditions: {
+          StringEquals: {
+            "s3:x-amz-acl": "bucket-owner-full-control",
+          },
+        },
+      })
+    );
 
     const processManifestFunctionLayer = new lambda.LayerVersion(
       this,
@@ -99,9 +111,7 @@ export class GlobalRekognitionCustomLabelsStack extends cdk.Stack {
     });
 
     buildModelFunction.role!.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName(
-        "AmazonRekognitionCustomLabelsFullAccess"
-      )
+      ManagedPolicy.fromAwsManagedPolicyName("AmazonRekognitionFullAccess")
     );
 
     const buildModelDefaultIntegration = new LambdaProxyIntegration({
