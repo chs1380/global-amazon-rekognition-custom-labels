@@ -30,7 +30,10 @@ export const lambdaHandler = async (
     const createProjectVersionCommand = new CreateProjectVersionCommand({
       ProjectArn: createProjectCommandOutput.ProjectArn!,
       VersionName: "first",
-      OutputConfig: { S3Bucket: process.env.bucket, S3KeyPrefix: "output" },
+      OutputConfig: {
+        S3Bucket: process.env.outputBucket,
+        S3KeyPrefix: "output/",
+      },
       TestingData: {
         AutoCreate: true,
       },
@@ -39,7 +42,7 @@ export const lambdaHandler = async (
           {
             GroundTruthManifest: {
               S3Object: {
-                Bucket: process.env.bucket,
+                Bucket: process.env.trainingBucket,
                 Name: manifestKey,
               },
             },

@@ -14,19 +14,45 @@ export class GlobalRekognitionCustomLabelsStack extends cdk.Stack {
     super(scope, id, props);
 
     // The code that defines your stack goes here
-    const bucket = new s3.Bucket(this, "TrainingDataBucket", {
+    const trainingBucket = new s3.Bucket(this, "TrainingDataBucket", {
       bucketName: "global-custom-labels-" + this.account + "-" + this.region,
       autoDeleteObjects: true,
       removalPolicy: RemovalPolicy.DESTROY,
     });
-    bucket.addToResourcePolicy(
+    const outputBucket = new s3.Bucket(this, "outputBucket", {
+      bucketName:
+        "global-custom-labels-" + this.account + "-" + this.region + "-output",
+      autoDeleteObjects: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+    outputBucket.addToResourcePolicy(
       new iam.PolicyStatement({
-        actions: ["s3:GetBucketAcl", "s3:GetBucketLocation"],
-        resources: [bucket.bucketArn],
+        actions: ["s3:GetBucketAcl"],
+        resources: [outputBucket.bucketArn],
         principals: [new iam.ServicePrincipal("rekognition.amazonaws.com")],
       })
     );
-    bucket.addToResourcePolicy(
+    outputBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        actions: ["s3:PutObject"],
+        resources: [outputBucket.arnForObjects("*")],
+        principals: [new iam.ServicePrincipal("rekognition.amazonaws.com")],
+        conditions: {
+          StringEquals: {
+            "s3:x-amz-acl": "bucket-owner-full-control",
+          },
+        },
+      })
+    );
+
+    trainingBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        actions: ["s3:GetBucketAcl", "s3:GetBucketLocation"],
+        resources: [trainingBucket.bucketArn],
+        principals: [new iam.ServicePrincipal("rekognition.amazonaws.com")],
+      })
+    );
+    trainingBucket.addToResourcePolicy(
       new iam.PolicyStatement({
         actions: [
           "s3:GetObject",
@@ -34,20 +60,8 @@ export class GlobalRekognitionCustomLabelsStack extends cdk.Stack {
           "s3:GetObjectVersion",
           "s3:GetObjectTagging",
         ],
-        resources: [bucket.arnForObjects("*")],
+        resources: [trainingBucket.arnForObjects("*")],
         principals: [new iam.ServicePrincipal("rekognition.amazonaws.com")],
-      })
-    );
-    bucket.addToResourcePolicy(
-      new iam.PolicyStatement({
-        actions: ["s3:PutObject"],
-        resources: [bucket.arnForObjects("*")],
-        principals: [new iam.ServicePrincipal("rekognition.amazonaws.com")],
-        conditions: {
-          StringEquals: {
-            "s3:x-amz-acl": "bucket-owner-full-control",
-          },
-        },
       })
     );
 
@@ -78,12 +92,12 @@ export class GlobalRekognitionCustomLabelsStack extends cdk.Stack {
     );
 
     processManifestFunction.addEventSource(
-      new S3EventSource(bucket, {
+      new S3EventSource(trainingBucket, {
         events: [s3.EventType.OBJECT_CREATED_PUT],
         filters: [{ suffix: ".manifest" }],
       })
     );
-    bucket.grantReadWrite(processManifestFunction);
+    trainingBucket.grantReadWrite(processManifestFunction);
 
     const buildModelFunctionLayer = new lambda.LayerVersion(
       this,
@@ -106,7 +120,8 @@ export class GlobalRekognitionCustomLabelsStack extends cdk.Stack {
       ),
       layers: [buildModelFunctionLayer],
       environment: {
-        bucket: bucket.bucketName,
+        trainingBucket: trainingBucket.bucketName,
+        outputBucket: outputBucket.bucketName,
       },
     });
 
@@ -125,7 +140,7 @@ export class GlobalRekognitionCustomLabelsStack extends cdk.Stack {
     });
 
     new CfnOutput(this, "TrainingDataBucketName", {
-      value: bucket.bucketName,
+      value: trainingBucket.bucketName,
       description: "Training Data Bucket",
     });
     new CfnOutput(this, "BuildModelHttpApiUrl", {
