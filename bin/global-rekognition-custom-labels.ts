@@ -1,21 +1,57 @@
 #!/usr/bin/env node
-import 'source-map-support/register';
-import * as cdk from '@aws-cdk/core';
-import { GlobalRekognitionCustomLabelsStack } from '../lib/global-rekognition-custom-labels-stack';
+import "source-map-support/register";
+import * as cdk from "@aws-cdk/core";
+import { GlobalRekognitionCustomLabelsRegionalStack } from "../lib/global-rekognition-custom-labels-regional-stack";
+import {
+  GlobalRekognitionCustomLabelsManagementStack,
+  RegionalStack,
+} from "../lib/global-rekognition-custom-labels-management-stack";
+import { StackOutputs } from "cdk-remote-stack";
+
+//Amazon Rekognition Custom Labels
+//https://docs.aws.amazon.com/general/latest/gr/rekognition.html
+/*const supportedRegions = [
+  "us-east-1",
+  "us-east-2",
+  "us-west-2",
+  "eu-west-1",
+  "eu-west-2",
+  "eu-central-1",
+  "ap-south-1",
+  "ap-southeast-1",
+  "ap-southeast-2",
+  "ap-northeast-1",
+  "ap-northeast-2",
+];*/
+const supportedRegions = ["us-east-1", "us-east-2"];
+const managementRegion = "us-east-1";
 
 const app = new cdk.App();
-new GlobalRekognitionCustomLabelsStack(app, 'GlobalRekognitionCustomLabelsStack', {
-  /* If you don't specify 'env', this stack will be environment-agnostic.
-   * Account/Region-dependent features and context lookups will not work,
-   * but a single synthesized template can be deployed anywhere. */
 
-  /* Uncomment the next line to specialize this stack for the AWS Account
-   * and Region that are implied by the current CLI configuration. */
-  // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+const createRegionalStack = (region: string): RegionalStack => {
+  const stack = new GlobalRekognitionCustomLabelsRegionalStack(
+    app,
+    "GlobalRekognitionCustomLabelsStack-" + region,
+    {
+      env: {
+        account: process.env.CDK_DEFAULT_ACCOUNT,
+        region: region,
+      },
+    }
+  );
+  return { region, stackId: stack.stackId, stackName: stack.stackName };
+};
 
-  /* Uncomment the next line if you know exactly what Account and Region you
-   * want to deploy the stack to. */
-  // env: { account: '123456789012', region: 'us-east-1' },
+const regionalStacks = supportedRegions.map(createRegionalStack);
 
-  /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
-});
+const managementStack = new GlobalRekognitionCustomLabelsManagementStack(
+  app,
+  "GlobalRekognitionCustomLabelsManagementStack-" + managementRegion,
+  {
+    env: {
+      account: process.env.CDK_DEFAULT_ACCOUNT,
+      region: managementRegion,
+    },
+    regionalStacks,
+  }
+);

@@ -9,19 +9,40 @@ import { HttpApi, HttpMethod } from "@aws-cdk/aws-apigatewayv2";
 import { LambdaProxyIntegration } from "@aws-cdk/aws-apigatewayv2-integrations";
 import { ManagedPolicy } from "@aws-cdk/aws-iam";
 
-export class GlobalRekognitionCustomLabelsStack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+export interface RegionalStack {
+  region: string;
+  stackId: string;
+  stackName: string;
+}
+interface GlobalRekognitionCustomLabelsManagementStackProps
+  extends cdk.StackProps {
+  regionalStacks: RegionalStack[];
+}
+
+export class GlobalRekognitionCustomLabelsManagementStack extends cdk.Stack {
+  constructor(
+    scope: cdk.Construct,
+    id: string,
+    props: GlobalRekognitionCustomLabelsManagementStackProps
+  ) {
     super(scope, id, props);
+
+    console.log(props.regionalStacks);
 
     // The code that defines your stack goes here
     const trainingBucket = new s3.Bucket(this, "TrainingDataBucket", {
-      bucketName: "global-custom-labels-" + this.account + "-" + this.region,
+      bucketName:
+        "global-custom-labels-management" + this.account + "-" + this.region,
       autoDeleteObjects: true,
       removalPolicy: RemovalPolicy.DESTROY,
     });
     const outputBucket = new s3.Bucket(this, "outputBucket", {
       bucketName:
-        "global-custom-labels-" + this.account + "-" + this.region + "-output",
+        "global-custom-labels-management" +
+        this.account +
+        "-" +
+        this.region +
+        "-output",
       autoDeleteObjects: true,
       removalPolicy: RemovalPolicy.DESTROY,
     });
@@ -64,40 +85,6 @@ export class GlobalRekognitionCustomLabelsStack extends cdk.Stack {
         principals: [new iam.ServicePrincipal("rekognition.amazonaws.com")],
       })
     );
-
-    const processManifestFunctionLayer = new lambda.LayerVersion(
-      this,
-      "ProcessManifestFunctionLayer",
-      {
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, "lambda", "process-manifest-layer")
-        ),
-        compatibleRuntimes: [lambda.Runtime.NODEJS_14_X],
-        license: "Apache-2.0",
-        description: "A layer to test the L2 construct",
-      }
-    );
-    const processManifestFunction = new lambda.Function(
-      this,
-      "ProcessManifestFunction",
-      {
-        runtime: lambda.Runtime.NODEJS_14_X,
-        handler: "index.lambdaHandler",
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, "lambda", "process-manifest"),
-          { exclude: ["node_modules"] }
-        ),
-        layers: [processManifestFunctionLayer],
-      }
-    );
-
-    processManifestFunction.addEventSource(
-      new S3EventSource(trainingBucket, {
-        events: [s3.EventType.OBJECT_CREATED_PUT],
-        filters: [{ suffix: ".manifest" }],
-      })
-    );
-    trainingBucket.grantReadWrite(processManifestFunction);
 
     const buildModelFunctionLayer = new lambda.LayerVersion(
       this,
@@ -148,9 +135,9 @@ export class GlobalRekognitionCustomLabelsStack extends cdk.Stack {
       value: trainingBucket.bucketName,
       description: "Training Data Bucket",
     });
-    new CfnOutput(this, "BuildModelHttpApiUrl", {
+    new CfnOutput(this, "RunModelHttpApiUrl", {
       value: httpApi.url!,
-      description: "Build Model Http Api Url",
+      description: "Run Model Http Api Url",
     });
   }
 }
