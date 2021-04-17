@@ -138,5 +138,33 @@ export class GlobalRekognitionCustomLabelsManagementStack extends cdk.Stack {
       value: httpApi.url!,
       description: "Run Model Http Api Url",
     });
+
+    // create role for lambda describe model
+    const describerole = new iam.Role(this, 'LambdaRoleDescribe', {
+      assumedBy: new iam.CompositePrincipal(
+        new iam.ServicePrincipal('lambda.amazonaws.com'),
+        new iam.ServicePrincipal('rekognition.amazonaws.com'),
+      ),
+      roleName: 'LambdaDescribeRole'
+    });
+
+    // add Policy for describe
+    describerole.addToPolicy(new iam.PolicyStatement ({
+      effect: iam.Effect.ALLOW,
+      resources: ['*'],
+      actions: [            
+        'rekognition:DescribeProjects',
+        'rekognition:DescribeProjectVersions'
+      ]
+    }));
+
+    // create lambda to describe model
+    const describeLambda = new lambda.Function(this, 'checkProjectVer', {
+      runtime: lambda.Runtime.PYTHON_3_7,
+      handler: 'lambda_function.lambda_handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, "lambda", "describe-model")),
+      role: describerole,
+    });
+
   }
 }
