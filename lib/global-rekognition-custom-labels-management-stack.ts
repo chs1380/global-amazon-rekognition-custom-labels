@@ -2,7 +2,6 @@ import * as cdk from "@aws-cdk/core";
 import * as s3 from "@aws-cdk/aws-s3";
 import * as iam from "@aws-cdk/aws-iam";
 import { CfnOutput, RemovalPolicy } from "@aws-cdk/core";
-import { S3EventSource } from "@aws-cdk/aws-lambda-event-sources";
 import * as lambda from "@aws-cdk/aws-lambda";
 import * as path from "path";
 import { HttpApi, HttpMethod } from "@aws-cdk/aws-apigatewayv2";
@@ -12,6 +11,7 @@ import { ManagedPolicy } from "@aws-cdk/aws-iam";
 export interface RegionalStack {
   region: string;
   stackName: string;
+  trainingDataBucket: s3.Bucket;
 }
 interface GlobalRekognitionCustomLabelsManagementStackProps
   extends cdk.StackProps {
@@ -26,7 +26,11 @@ export class GlobalRekognitionCustomLabelsManagementStack extends cdk.Stack {
   ) {
     super(scope, id, props);
 
-    console.log(props.regionalStacks);
+    console.log(props.regionalStacks[1].trainingDataBucket.bucketArn);
+    new CfnOutput(this, "testing", {
+      value: props.regionalStacks[1].trainingDataBucket.bucketArn,
+      description: "Training Data Bucket",
+    });
 
     // The code that defines your stack goes here
     const trainingBucket = new s3.Bucket(this, "TrainingDataBucket", {
@@ -130,6 +134,29 @@ export class GlobalRekognitionCustomLabelsManagementStack extends cdk.Stack {
       integration: buildModelDefaultIntegration,
     });
 
+    // create lambda to describe model
+    const describeFunction = new lambda.Function(
+      this,
+      "CheckProjectVersionFunction",
+      {
+        runtime: lambda.Runtime.PYTHON_3_7,
+        handler: "lambda_function.lambda_handler",
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, "lambda", "describe-model")
+        ),
+      }
+    );
+    describeFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        resources: ["*"],
+        actions: [
+          "rekognition:DescribeProjects",
+          "rekognition:DescribeProjectVersions",
+        ],
+      })
+    );
+
     new CfnOutput(this, "TrainingDataBucketName", {
       value: trainingBucket.bucketName,
       description: "Training Data Bucket",
@@ -138,33 +165,5 @@ export class GlobalRekognitionCustomLabelsManagementStack extends cdk.Stack {
       value: httpApi.url!,
       description: "Run Model Http Api Url",
     });
-
-    // create role for lambda describe model
-    const describerole = new iam.Role(this, 'LambdaRoleDescribe', {
-      assumedBy: new iam.CompositePrincipal(
-        new iam.ServicePrincipal('lambda.amazonaws.com'),
-        new iam.ServicePrincipal('rekognition.amazonaws.com'),
-      ),
-      roleName: 'LambdaDescribeRole'
-    });
-
-    // add Policy for describe
-    describerole.addToPolicy(new iam.PolicyStatement ({
-      effect: iam.Effect.ALLOW,
-      resources: ['*'],
-      actions: [            
-        'rekognition:DescribeProjects',
-        'rekognition:DescribeProjectVersions'
-      ]
-    }));
-
-    // create lambda to describe model
-    const describeLambda = new lambda.Function(this, 'checkProjectVer', {
-      runtime: lambda.Runtime.PYTHON_3_7,
-      handler: 'lambda_function.lambda_handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, "lambda", "describe-model")),
-      role: describerole,
-    });
-
   }
 }

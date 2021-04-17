@@ -2,10 +2,8 @@
 import "source-map-support/register";
 import * as cdk from "@aws-cdk/core";
 import { GlobalRekognitionCustomLabelsRegionalStack } from "../lib/global-rekognition-custom-labels-regional-stack";
-import {
-  GlobalRekognitionCustomLabelsManagementStack,
-  RegionalStack,
-} from "../lib/global-rekognition-custom-labels-management-stack";
+import { GlobalRekognitionCustomLabelsManagementStack } from "../lib/global-rekognition-custom-labels-management-stack";
+import * as s3 from "@aws-cdk/aws-s3";
 
 //Amazon Rekognition Custom Labels
 //https://docs.aws.amazon.com/general/latest/gr/rekognition.html
@@ -27,7 +25,14 @@ const managementRegion = "us-east-1";
 
 const app = new cdk.App();
 
-const createRegionalStack = (region: string): RegionalStack => {
+const createRegionalStack = (
+  region: string
+): {
+  region: string;
+  stackName: string;
+  stack: GlobalRekognitionCustomLabelsRegionalStack;
+  trainingDataBucket: s3.Bucket;
+} => {
   const stack = new GlobalRekognitionCustomLabelsRegionalStack(
     app,
     "GlobalRekognitionCustomLabelsStack-" + region,
@@ -38,7 +43,12 @@ const createRegionalStack = (region: string): RegionalStack => {
       },
     }
   );
-  return { region, stackName: stack.stackName };
+  return {
+    region,
+    stackName: stack.stackName,
+    stack,
+    trainingDataBucket: stack.trainingBucket,
+  };
 };
 
 const regionalStacks = supportedRegions.map(createRegionalStack);
@@ -54,3 +64,4 @@ const managementStack = new GlobalRekognitionCustomLabelsManagementStack(
     regionalStacks,
   }
 );
+regionalStacks.map((s) => managementStack.addDependency(s.stack));

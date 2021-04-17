@@ -1,7 +1,7 @@
 import * as cdk from "@aws-cdk/core";
 import * as s3 from "@aws-cdk/aws-s3";
 import * as iam from "@aws-cdk/aws-iam";
-import { CfnOutput, RemovalPolicy } from "@aws-cdk/core";
+import { CfnOutput, RemovalPolicy, Duration } from "@aws-cdk/core";
 import { S3EventSource } from "@aws-cdk/aws-lambda-event-sources";
 import * as lambda from "@aws-cdk/aws-lambda";
 import * as path from "path";
@@ -10,20 +10,34 @@ import { LambdaProxyIntegration } from "@aws-cdk/aws-apigatewayv2-integrations";
 import { ManagedPolicy } from "@aws-cdk/aws-iam";
 
 export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
+  public readonly trainingBucket: s3.Bucket;
+
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     // The code that defines your stack goes here
-    const trainingBucket = new s3.Bucket(this, "TrainingDataBucket", {
+    this.trainingBucket = new s3.Bucket(this, "TrainingDataBucket", {
       bucketName: "global-custom-labels-" + this.account + "-" + this.region,
       autoDeleteObjects: true,
       removalPolicy: RemovalPolicy.DESTROY,
+      versioned: true,
+      lifecycleRules: [
+        {
+          noncurrentVersionExpiration: Duration.days(1),
+        },
+      ],
     });
     const outputBucket = new s3.Bucket(this, "outputBucket", {
       bucketName:
         "global-custom-labels-" + this.account + "-" + this.region + "-output",
       autoDeleteObjects: true,
       removalPolicy: RemovalPolicy.DESTROY,
+      versioned: true,
+      lifecycleRules: [
+        {
+          noncurrentVersionExpiration: Duration.days(1),
+        },
+      ],
     });
     outputBucket.addToResourcePolicy(
       new iam.PolicyStatement({
@@ -45,14 +59,14 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
       })
     );
 
-    trainingBucket.addToResourcePolicy(
+    this.trainingBucket.addToResourcePolicy(
       new iam.PolicyStatement({
         actions: ["s3:GetBucketAcl", "s3:GetBucketLocation"],
-        resources: [trainingBucket.bucketArn],
+        resources: [this.trainingBucket.bucketArn],
         principals: [new iam.ServicePrincipal("rekognition.amazonaws.com")],
       })
     );
-    trainingBucket.addToResourcePolicy(
+    this.trainingBucket.addToResourcePolicy(
       new iam.PolicyStatement({
         actions: [
           "s3:GetObject",
@@ -60,7 +74,7 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
           "s3:GetObjectVersion",
           "s3:GetObjectTagging",
         ],
-        resources: [trainingBucket.arnForObjects("*")],
+        resources: [this.trainingBucket.arnForObjects("*")],
         principals: [new iam.ServicePrincipal("rekognition.amazonaws.com")],
       })
     );
@@ -92,12 +106,12 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
     );
 
     processManifestFunction.addEventSource(
-      new S3EventSource(trainingBucket, {
+      new S3EventSource(this.trainingBucket, {
         events: [s3.EventType.OBJECT_CREATED_PUT],
         filters: [{ suffix: ".manifest" }],
       })
     );
-    trainingBucket.grantReadWrite(processManifestFunction);
+    this.trainingBucket.grantReadWrite(processManifestFunction);
 
     const buildModelFunctionLayer = new lambda.LayerVersion(
       this,
@@ -120,7 +134,7 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
       ),
       layers: [buildModelFunctionLayer],
       environment: {
-        trainingBucket: trainingBucket.bucketName,
+        trainingBucket: this.trainingBucket.bucketName,
         outputBucket: outputBucket.bucketName,
       },
     });
@@ -145,10 +159,10 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
     });
 
     new CfnOutput(this, "TrainingDataBucketName", {
-      value: trainingBucket.bucketName,
+      value: this.trainingBucket.bucketName,
       description: "Training Data Bucket",
     });
-    
+
     new CfnOutput(this, "OutputDataBucketName", {
       value: outputBucket.bucketName,
       description: "Output Data Bucket",
