@@ -11,7 +11,6 @@ import { ManagedPolicy } from "@aws-cdk/aws-iam";
 
 export interface RegionalStack {
   region: string;
-  stackId: string;
   stackName: string;
 }
 interface GlobalRekognitionCustomLabelsManagementStackProps

@@ -6,7 +6,6 @@ import {
   GlobalRekognitionCustomLabelsManagementStack,
   RegionalStack,
 } from "../lib/global-rekognition-custom-labels-management-stack";
-import { StackOutputs } from "cdk-remote-stack";
 
 //Amazon Rekognition Custom Labels
 //https://docs.aws.amazon.com/general/latest/gr/rekognition.html
@@ -39,7 +38,7 @@ const createRegionalStack = (region: string): RegionalStack => {
       },
     }
   );
-  return { region, stackId: stack.stackId, stackName: stack.stackName };
+  return { region, stackName: stack.stackName };
 };
 
 const regionalStacks = supportedRegions.map(createRegionalStack);
