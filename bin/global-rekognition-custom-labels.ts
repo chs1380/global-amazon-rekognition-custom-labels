@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import "source-map-support/register";
 import * as cdk from "@aws-cdk/core";
-import { GlobalRekognitionCustomLabelsRegionalStack } from "../lib/global-rekognition-custom-labels-regional-stack";
-import { GlobalRekognitionCustomLabelsManagementStack } from "../lib/global-rekognition-custom-labels-management-stack";
+import { GlobalRekognitionCustomLabelsRegionalStack } from "../lib/regional-stack";
+import { GlobalRekognitionCustomLabelsManagementStack } from "../lib/global-management-stack";
 import * as s3 from "@aws-cdk/aws-s3";
 
 //Amazon Rekognition Custom Labels

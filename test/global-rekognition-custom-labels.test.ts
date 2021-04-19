@@ -4,7 +4,7 @@ import {
   MatchStyle,
 } from "@aws-cdk/assert";
 import * as cdk from "@aws-cdk/core";
-import * as GlobalRekognitionCustomLabels from "../lib/global-rekognition-custom-labels-regional-stack";
+import * as GlobalRekognitionCustomLabels from "../lib/regional-stack";
 
 test("Empty Stack", () => {
   const app = new cdk.App();
