@@ -85,7 +85,7 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
       "ProcessManifestFunctionLayer",
       {
         code: lambda.Code.fromAsset(
-          path.join(__dirname, "lambda", "process-manifest-layer")
+          path.join(__dirname, "../lambda", "process-manifest-layer")
         ),
         compatibleRuntimes: [lambda.Runtime.NODEJS_14_X],
         license: "Apache-2.0",
@@ -99,7 +99,7 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
         runtime: lambda.Runtime.NODEJS_14_X,
         handler: "index.lambdaHandler",
         code: lambda.Code.fromAsset(
-          path.join(__dirname, "lambda", "process-manifest"),
+          path.join(__dirname, "../lambda", "process-manifest"),
           { exclude: ["node_modules"] }
         ),
         layers: [processManifestFunctionLayer],
@@ -119,18 +119,18 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
       "BuildModelFunctionLayer",
       {
         code: lambda.Code.fromAsset(
-          path.join(__dirname, "lambda", "build-model-layer")
+          path.join(__dirname, "../lambda", "build-model-layer")
         ),
         compatibleRuntimes: [lambda.Runtime.NODEJS_14_X],
         license: "Apache-2.0",
         description: "A layer to test the L2 construct",
       }
     );
-    const buildModelFunction = new lambda.Function(this, "BuildModelFunction", {
+    const buildModelFunction = new lambda.Function(this, "RunModelFunction", {
       runtime: lambda.Runtime.NODEJS_14_X,
       handler: "index.lambdaHandler",
       code: lambda.Code.fromAsset(
-        path.join(__dirname, "lambda", "build-model"),
+        path.join(__dirname, "../lambda", "run-model"),
         { exclude: ["node_modules"] }
       ),
       layers: [buildModelFunctionLayer],

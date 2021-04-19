@@ -23,7 +23,7 @@ export class GlobalModelStepFunction extends Construct {
       "BuildModelFunctionLayer",
       {
         code: lambda.Code.fromAsset(
-          path.join(__dirname, "lambda", "build-model-layer")
+          path.join(__dirname, "../lambda", "build-model-layer")
         ),
         compatibleRuntimes: [lambda.Runtime.NODEJS_14_X],
         license: "Apache-2.0",
@@ -34,7 +34,7 @@ export class GlobalModelStepFunction extends Construct {
       runtime: lambda.Runtime.NODEJS_14_X,
       handler: "index.lambdaHandler",
       code: lambda.Code.fromAsset(
-        path.join(__dirname, "lambda", "build-model"),
+        path.join(__dirname, "../lambda", "build-model"),
         { exclude: ["node_modules"] }
       ),
       layers: [buildModelFunctionLayer],
@@ -56,7 +56,7 @@ export class GlobalModelStepFunction extends Construct {
         runtime: lambda.Runtime.PYTHON_3_7,
         handler: "lambda_function.lambda_handler",
         code: lambda.Code.fromAsset(
-          path.join(__dirname, "lambda", "describe-model")
+          path.join(__dirname, "../lambda", "describe-model")
         ),
       }
     );
