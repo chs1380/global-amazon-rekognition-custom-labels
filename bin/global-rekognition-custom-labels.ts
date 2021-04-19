@@ -32,6 +32,7 @@ const createRegionalStack = (
   stackName: string;
   stack: GlobalRekognitionCustomLabelsRegionalStack;
   trainingDataBucket: s3.Bucket;
+  outputBucket: s3.Bucket;
 } => {
   const stack = new GlobalRekognitionCustomLabelsRegionalStack(
     app,
@@ -48,6 +49,7 @@ const createRegionalStack = (
     stackName: stack.stackName,
     stack,
     trainingDataBucket: stack.trainingBucket,
+    outputBucket: stack.outputBucket,
   };
 };
 

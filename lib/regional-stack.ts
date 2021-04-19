@@ -11,6 +11,7 @@ import { ManagedPolicy } from "@aws-cdk/aws-iam";
 
 export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
   public readonly trainingBucket: s3.Bucket;
+  public readonly outputBucket: s3.Bucket;
 
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -27,7 +28,7 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
         },
       ],
     });
-    const outputBucket = new s3.Bucket(this, "outputBucket", {
+    this.outputBucket = new s3.Bucket(this, "outputBucket", {
       bucketName:
         "global-custom-labels-" + this.account + "-" + this.region + "-output",
       autoDeleteObjects: true,
@@ -39,17 +40,17 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
         },
       ],
     });
-    outputBucket.addToResourcePolicy(
+    this.outputBucket.addToResourcePolicy(
       new iam.PolicyStatement({
         actions: ["s3:GetBucketAcl"],
-        resources: [outputBucket.bucketArn],
+        resources: [this.outputBucket.bucketArn],
         principals: [new iam.ServicePrincipal("rekognition.amazonaws.com")],
       })
     );
-    outputBucket.addToResourcePolicy(
+    this.outputBucket.addToResourcePolicy(
       new iam.PolicyStatement({
         actions: ["s3:PutObject"],
-        resources: [outputBucket.arnForObjects("*")],
+        resources: [this.outputBucket.arnForObjects("*")],
         principals: [new iam.ServicePrincipal("rekognition.amazonaws.com")],
         conditions: {
           StringEquals: {
@@ -135,7 +136,7 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
       layers: [buildModelFunctionLayer],
       environment: {
         trainingBucket: this.trainingBucket.bucketName,
-        outputBucket: outputBucket.bucketName,
+        outputBucket: this.outputBucket.bucketName,
       },
     });
 
@@ -164,7 +165,7 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
     });
 
     new CfnOutput(this, "OutputDataBucketName", {
-      value: outputBucket.bucketName,
+      value: this.outputBucket.bucketName,
       description: "Output Data Bucket",
     });
     new CfnOutput(this, "Region", {

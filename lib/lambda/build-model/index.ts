@@ -1,4 +1,3 @@
-import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import {
   RekognitionClient,
   CreateProjectCommand,
@@ -7,16 +6,30 @@ import {
   CreateProjectVersionCommandOutput,
 } from "@aws-sdk/client-rekognition";
 
+interface BuildModelEvent {
+  ProjectName: string;
+  ManifestKey: string;
+  VersionName: string;
+  Region: string;
+  TrainingDataBucket: string;
+  OutputBucket: string;
+}
+
+interface BuildModelResult extends BuildModelEvent {
+  Status: string;
+}
+
 export const lambdaHandler = async (
-  event: APIGatewayProxyEventV2
-): Promise<APIGatewayProxyResultV2> => {
+  event: BuildModelEvent
+): Promise<BuildModelResult> => {
   // async/await.
   console.log(event);
-  const projectName = event.queryStringParameters!["ProjectName"];
-  const manifestKey = event.queryStringParameters!["ManifestKey"];
+  const projectName = event.ProjectName;
+  const manifestKey = event.ManifestKey;
+  const resultEvent = event as BuildModelResult;
   try {
     const rekognitionClient = new RekognitionClient({
-      region: process.env.AWS_REGION,
+      region: event.Region,
     });
 
     const createProjectCommand = new CreateProjectCommand({
@@ -29,9 +42,9 @@ export const lambdaHandler = async (
     console.log(createProjectCommandOutput);
     const createProjectVersionCommand = new CreateProjectVersionCommand({
       ProjectArn: createProjectCommandOutput.ProjectArn!,
-      VersionName: "first",
+      VersionName: event.VersionName,
       OutputConfig: {
-        S3Bucket: process.env.outputBucket,
+        S3Bucket: event.OutputBucket,
         S3KeyPrefix: "output/",
       },
       TestingData: {
@@ -42,7 +55,7 @@ export const lambdaHandler = async (
           {
             GroundTruthManifest: {
               S3Object: {
-                Bucket: process.env.trainingBucket,
+                Bucket: event.TrainingDataBucket,
                 Name: manifestKey,
               },
             },
@@ -55,19 +68,15 @@ export const lambdaHandler = async (
       createProjectVersionCommand
     );
     console.log(createProjectVersionCommandOutput);
-    return {
-      statusCode: 200,
-      body: JSON.stringify(createProjectVersionCommandOutput),
-    };
+
     // process data.
   } catch (error) {
     console.error(error);
-    return {
-      statusCode: 200,
-      body: JSON.stringify(error),
-    };
+    resultEvent.Status = "error";
+    return resultEvent;
   } finally {
     // finally.
-    return "OK";
+    resultEvent.Status = "ok";
+    return resultEvent;
   }
 };

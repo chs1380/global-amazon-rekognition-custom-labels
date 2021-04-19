@@ -8,11 +8,13 @@ import { HttpApi, HttpMethod } from "@aws-cdk/aws-apigatewayv2";
 import { LambdaProxyIntegration } from "@aws-cdk/aws-apigatewayv2-integrations";
 import { ManagedPolicy, Role } from "@aws-cdk/aws-iam";
 import { Bucket, CfnBucket } from "@aws-cdk/aws-s3";
+import { GlobalModelStepFunction } from "./global-model-stepfunction";
 
 export interface RegionalStack {
   region: string;
   stackName: string;
   trainingDataBucket: s3.Bucket;
+  outputBucket: s3.Bucket;
 }
 interface GlobalRekognitionCustomLabelsManagementStackProps
   extends cdk.StackProps {
@@ -98,82 +100,31 @@ export class GlobalRekognitionCustomLabelsManagementStack extends cdk.Stack {
       })
     );
 
-    const buildModelFunctionLayer = new lambda.LayerVersion(
+    // const buildModelDefaultIntegration = new LambdaProxyIntegration({
+    //   handler: buildModelFunction,
+    // });
+    // const httpApi = new HttpApi(this, "HttpApi");
+    // httpApi.addRoutes({
+    //   path: "/build",
+    //   methods: [HttpMethod.GET],
+    //   integration: buildModelDefaultIntegration,
+    // });
+
+    const globalModelStepFunction = new GlobalModelStepFunction(
       this,
-      "BuildModelFunctionLayer",
-      {
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, "lambda", "build-model-layer")
-        ),
-        compatibleRuntimes: [lambda.Runtime.NODEJS_14_X],
-        license: "Apache-2.0",
-        description: "A layer to test the L2 construct",
-      }
+      "GlobalModelStepFunction",
+      { RegionalStacks: props.regionalStacks }
     );
-    const buildModelFunction = new lambda.Function(this, "BuildModelFunction", {
-      runtime: lambda.Runtime.NODEJS_14_X,
-      handler: "index.lambdaHandler",
-      code: lambda.Code.fromAsset(
-        path.join(__dirname, "lambda", "build-model"),
-        { exclude: ["node_modules"] }
-      ),
-      layers: [buildModelFunctionLayer],
-      environment: {
-        trainingBucket: trainingBucket.bucketName,
-        outputBucket: outputBucket.bucketName,
-      },
-    });
-
-    buildModelFunction.role!.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName(
-        "AmazonRekognitionCustomLabelsFullAccess"
-      )
-    );
-    buildModelFunction.role!.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName("AmazonS3ReadOnlyAccess")
-    );
-
-    const buildModelDefaultIntegration = new LambdaProxyIntegration({
-      handler: buildModelFunction,
-    });
-    const httpApi = new HttpApi(this, "HttpApi");
-    httpApi.addRoutes({
-      path: "/build",
-      methods: [HttpMethod.GET],
-      integration: buildModelDefaultIntegration,
-    });
-
     // create lambda to describe model
-    const describeFunction = new lambda.Function(
-      this,
-      "CheckProjectVersionFunction",
-      {
-        runtime: lambda.Runtime.PYTHON_3_7,
-        handler: "lambda_function.lambda_handler",
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, "lambda", "describe-model")
-        ),
-      }
-    );
-    describeFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        resources: ["*"],
-        actions: [
-          "rekognition:DescribeProjects",
-          "rekognition:DescribeProjectVersions",
-        ],
-      })
-    );
 
     new CfnOutput(this, "TrainingDataBucketName", {
       value: trainingBucket.bucketName,
       description: "Training Data Bucket",
     });
-    new CfnOutput(this, "RunModelHttpApiUrl", {
-      value: httpApi.url!,
-      description: "Run Model Http Api Url",
-    });
+    // new CfnOutput(this, "RunModelHttpApiUrl", {
+    //   value: httpApi.url!,
+    //   description: "Run Model Http Api Url",
+    // });
   }
 
   getDestinationRules(
