@@ -7,7 +7,6 @@ import {
   CreateProjectVersionCommandOutput,
   ProjectDescription,
   DescribeProjectsCommandInput,
-  ProjectVersionDescription,
   DescribeProjectVersionsCommandInput,
   DescribeProjectVersionsCommand,
 } from "@aws-sdk/client-rekognition";
