@@ -63,6 +63,7 @@ const managementStack = new GlobalRekognitionCustomLabelsManagementStack(
       account: process.env.CDK_DEFAULT_ACCOUNT,
       region: managementRegion,
     },
+    maximumModelBuildTime: 180, // in minute
     regionalStacks,
   }
 );

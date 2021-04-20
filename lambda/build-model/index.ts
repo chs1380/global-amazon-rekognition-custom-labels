@@ -22,8 +22,10 @@ interface BuildModelEvent {
 }
 
 interface BuildModelResult extends BuildModelEvent {
-  projectVersionArn: string;
+  ProjectArn: string;
+  ProjectVersionArn: string;
   Status: string;
+  Counter: Number;
 }
 
 async function getAllProjects(
@@ -44,32 +46,6 @@ async function getAllProjects(
   }
 
   return projects;
-}
-
-async function getAllVerions(
-  rekognitionClient: RekognitionClient,
-  projectArn: string
-): Promise<ProjectVersionDescription[]> {
-  let versions: ProjectVersionDescription[] = Array<ProjectVersionDescription>();
-  let params: DescribeProjectVersionsCommandInput = {
-    ProjectArn: projectArn,
-    MaxResults: 50,
-  };
-  let describeProjectVersionsCommand = new DescribeProjectVersionsCommand(
-    params
-  );
-
-  let response = await rekognitionClient.send(describeProjectVersionsCommand);
-  versions = [...versions, ...response.ProjectVersionDescriptions!];
-
-  while (response.NextToken) {
-    params.NextToken = response.NextToken;
-    describeProjectVersionsCommand = new DescribeProjectVersionsCommand(params);
-    response = await rekognitionClient.send(describeProjectVersionsCommand);
-    versions = [...versions, ...response.ProjectVersionDescriptions!];
-  }
-  console.log(versions);
-  return versions;
 }
 
 export const lambdaHandler = async (
@@ -106,20 +82,24 @@ export const lambdaHandler = async (
       console.log(createProjectCommandOutput);
     } else {
       projectArn = existingProject.ProjectArn;
-      const getProjectVersionName = (arn: string) => {
-        let matches = arn.match(/version\/[\s\S]*?\//);
-        return matches![0];
+
+      let params: DescribeProjectVersionsCommandInput = {
+        ProjectArn: projectArn,
+        VersionNames: [event.VersionName],
       };
-      const projectVerion = (
-        await getAllVerions(rekognitionClient, projectArn!)
-      ).find(
-        (c) =>
-          getProjectVersionName(c.ProjectVersionArn!) ===
-          "version/" + event.VersionName + "/"
+      let describeProjectVersionsCommand = new DescribeProjectVersionsCommand(
+        params
       );
+      let response = await rekognitionClient.send(
+        describeProjectVersionsCommand
+      );
+
+      const projectVerion = response.ProjectVersionDescriptions![0];
       if (projectVerion != null) {
         resultEvent.Status = projectVerion.Status!;
-        resultEvent.projectVersionArn = projectVerion.ProjectVersionArn!;
+        resultEvent.ProjectArn = projectArn!;
+        resultEvent.ProjectVersionArn = projectVerion.ProjectVersionArn!;
+        resultEvent.Counter = 0;
         return resultEvent;
       }
     }
@@ -154,7 +134,9 @@ export const lambdaHandler = async (
     console.log(createProjectVersionCommandOutput);
 
     resultEvent.Status = "STARTING";
-    resultEvent.projectVersionArn = createProjectVersionCommandOutput.ProjectVersionArn!;
+    resultEvent.ProjectArn = projectArn!;
+    resultEvent.ProjectVersionArn = createProjectVersionCommandOutput.ProjectVersionArn!;
+    resultEvent.Counter = 0;
     return resultEvent;
 
     // process data.

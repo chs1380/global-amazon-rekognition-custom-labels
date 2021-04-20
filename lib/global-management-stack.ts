@@ -18,6 +18,7 @@ export interface RegionalStack {
 }
 interface GlobalRekognitionCustomLabelsManagementStackProps
   extends cdk.StackProps {
+  maximumModelBuildTime: Number;
   regionalStacks: RegionalStack[];
 }
 
@@ -113,13 +114,20 @@ export class GlobalRekognitionCustomLabelsManagementStack extends cdk.Stack {
     const globalModelStepFunction = new GlobalModelStepFunction(
       this,
       "GlobalModelStepFunction",
-      { RegionalStacks: props.regionalStacks }
+      {
+        maximumModelBuildTime: props.maximumModelBuildTime,
+        RegionalStacks: props.regionalStacks,
+      }
     );
     // create lambda to describe model
 
     new CfnOutput(this, "TrainingDataBucketName", {
       value: trainingBucket.bucketName,
       description: "Training Data Bucket",
+    });
+    new CfnOutput(this, "GlobalModelBuildStepFunction", {
+      value: trainingBucket.bucketName,
+      description: "Global Model Build StepFunction",
     });
     // new CfnOutput(this, "RunModelHttpApiUrl", {
     //   value: httpApi.url!,
