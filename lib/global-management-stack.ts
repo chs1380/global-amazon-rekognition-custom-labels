@@ -2,13 +2,8 @@ import * as cdk from "@aws-cdk/core";
 import * as s3 from "@aws-cdk/aws-s3";
 import * as iam from "@aws-cdk/aws-iam";
 import { CfnOutput, RemovalPolicy, Duration } from "@aws-cdk/core";
-import * as lambda from "@aws-cdk/aws-lambda";
-import * as path from "path";
-import { HttpApi, HttpMethod } from "@aws-cdk/aws-apigatewayv2";
-import { LambdaProxyIntegration } from "@aws-cdk/aws-apigatewayv2-integrations";
-import { ManagedPolicy, Role } from "@aws-cdk/aws-iam";
 import { Bucket, CfnBucket } from "@aws-cdk/aws-s3";
-import { GlobalModelStepFunction } from "./global-model-stepfunction";
+import { Role } from "@aws-cdk/aws-iam";
 
 export interface RegionalStack {
   region: string;
@@ -19,7 +14,7 @@ export interface RegionalStack {
 interface GlobalRekognitionCustomLabelsManagementStackProps
   extends cdk.StackProps {
   maximumModelBuildTime: Number;
-  regionalStacks: RegionalStack[];
+  RegionalStacks: RegionalStack[];
 }
 
 export class GlobalRekognitionCustomLabelsManagementStack extends cdk.Stack {
@@ -44,12 +39,12 @@ export class GlobalRekognitionCustomLabelsManagementStack extends cdk.Stack {
       ],
     });
 
-    const crrRole = this.getCrrRole(trainingBucket, props.regionalStacks);
+    const crrRole = this.getCrrRole(trainingBucket, props.RegionalStacks);
     const cfnBucket = trainingBucket.node.defaultChild as s3.CfnBucket;
     // Change its properties
     cfnBucket.replicationConfiguration = {
       role: crrRole.roleArn,
-      rules: this.getDestinationRules(props.regionalStacks),
+      rules: this.getDestinationRules(props.RegionalStacks),
     };
     const outputBucket = new s3.Bucket(this, "outputBucket", {
       bucketName:
@@ -101,26 +96,6 @@ export class GlobalRekognitionCustomLabelsManagementStack extends cdk.Stack {
       })
     );
 
-    // const buildModelDefaultIntegration = new LambdaProxyIntegration({
-    //   handler: buildModelFunction,
-    // });
-    // const httpApi = new HttpApi(this, "HttpApi");
-    // httpApi.addRoutes({
-    //   path: "/build",
-    //   methods: [HttpMethod.GET],
-    //   integration: buildModelDefaultIntegration,
-    // });
-
-    const globalModelStepFunction = new GlobalModelStepFunction(
-      this,
-      "GlobalModelStepFunction",
-      {
-        maximumModelBuildTime: props.maximumModelBuildTime,
-        RegionalStacks: props.regionalStacks,
-      }
-    );
-    // create lambda to describe model
-
     new CfnOutput(this, "TrainingDataBucketName", {
       value: trainingBucket.bucketName,
       description: "Training Data Bucket",
@@ -129,10 +104,6 @@ export class GlobalRekognitionCustomLabelsManagementStack extends cdk.Stack {
       value: trainingBucket.bucketName,
       description: "Global Model Build StepFunction",
     });
-    // new CfnOutput(this, "RunModelHttpApiUrl", {
-    //   value: httpApi.url!,
-    //   description: "Run Model Http Api Url",
-    // });
   }
 
   getDestinationRules(

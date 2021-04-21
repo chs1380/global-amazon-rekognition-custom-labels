@@ -4,6 +4,7 @@ import * as cdk from "@aws-cdk/core";
 import { GlobalRekognitionCustomLabelsRegionalStack } from "../lib/regional-stack";
 import { GlobalRekognitionCustomLabelsManagementStack } from "../lib/global-management-stack";
 import * as s3 from "@aws-cdk/aws-s3";
+import { GlobalModelStepFunctionStack } from "../lib/global-model-stepfunction-stack";
 
 //Amazon Rekognition Custom Labels
 //https://docs.aws.amazon.com/general/latest/gr/rekognition.html
@@ -64,7 +65,21 @@ const managementStack = new GlobalRekognitionCustomLabelsManagementStack(
       region: managementRegion,
     },
     maximumModelBuildTime: 180, // in minute
-    regionalStacks,
+    RegionalStacks: regionalStacks,
   }
 );
 regionalStacks.map((s) => managementStack.addDependency(s.stack));
+
+const globalModelStepFunctionStack = new GlobalModelStepFunctionStack(
+  app,
+  "GlobalModelStepFunctionStack-" + managementRegion,
+  {
+    env: {
+      account: process.env.CDK_DEFAULT_ACCOUNT,
+      region: managementRegion,
+    },
+    maximumModelBuildTime: 180, // in minute
+    RegionalStacks: regionalStacks,
+  }
+);
+regionalStacks.map((s) => globalModelStepFunctionStack.addDependency(s.stack));

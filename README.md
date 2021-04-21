@@ -14,9 +14,16 @@ manifest file will be replace the souce bucket name to the distination bucket na
 
 
 ## Sample Input Data for deplying Global Rekognition Custom Labels Model
-
+# create-build-model-stepfunction
 {
     "ProjectName": "DeepRacer",
   	"ManifestKey":"assets/deepracerv1r/output.manifest",
   	"VersionName": "first"
+}
+
+
+# delete-model-stepfunction
+{
+    "ProjectName": "DeepRacer",  	
+  	"VersionName": []
 }

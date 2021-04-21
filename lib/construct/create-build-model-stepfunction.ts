@@ -1,45 +1,39 @@
 import { Construct, Duration } from "@aws-cdk/core";
-import { RegionalStack } from "./global-management-stack";
 import * as sfn from "@aws-cdk/aws-stepfunctions";
 import * as tasks from "@aws-cdk/aws-stepfunctions-tasks";
 import * as lambda from "@aws-cdk/aws-lambda";
 import path = require("path");
 import { ManagedPolicy } from "@aws-cdk/aws-iam";
 import * as iam from "@aws-cdk/aws-iam";
-import * as sns from "@aws-cdk/aws-sns";
 
-export interface GlobalModelStepFunctionProps {
+import { LayerVersion } from "@aws-cdk/aws-lambda";
+import { RegionalStack } from "../global-management-stack";
+import { RegionalData } from "../global-model-stepfunction-stack";
+import { Topic } from "@aws-cdk/aws-sns";
+
+export interface CreateBuiidModelStepfunctionProps {
   maximumModelBuildTime: Number;
   RegionalStacks: RegionalStack[];
+  buildModelFunctionLayer: LayerVersion;
+  regionalData: RegionalData[];
+  buildModelResultTopic: Topic;
 }
 
-export class GlobalModelStepFunction extends Construct {
+export class CreateBuiidModelStepfunctionConstruct extends Construct {
   constructor(
     scope: Construct,
     id: string,
-    props: GlobalModelStepFunctionProps
+    props: CreateBuiidModelStepfunctionProps
   ) {
     super(scope, id);
-    const buildModelFunctionLayer = new lambda.LayerVersion(
-      this,
-      "BuildModelFunctionLayer",
-      {
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, "../lambda", "build-model-layer")
-        ),
-        compatibleRuntimes: [lambda.Runtime.NODEJS_14_X],
-        license: "Apache-2.0",
-        description: "A layer to test the L2 construct",
-      }
-    );
     const buildModelFunction = new lambda.Function(this, "BuildModelFunction", {
       runtime: lambda.Runtime.NODEJS_14_X,
       handler: "index.lambdaHandler",
       code: lambda.Code.fromAsset(
-        path.join(__dirname, "../lambda", "build-model"),
+        path.join(__dirname, "../../lambda", "build-model"),
         { exclude: ["node_modules"] }
       ),
-      layers: [buildModelFunctionLayer],
+      layers: [props.buildModelFunctionLayer],
     });
 
     buildModelFunction.role!.addManagedPolicy(
@@ -51,20 +45,20 @@ export class GlobalModelStepFunction extends Construct {
       ManagedPolicy.fromAwsManagedPolicyName("AmazonS3ReadOnlyAccess")
     );
 
-    const checkProjectVersion = new lambda.Function(
+    const checkProjectVersionFunction = new lambda.Function(
       this,
       "CheckProjectVersionFunction",
       {
         runtime: lambda.Runtime.NODEJS_14_X,
         handler: "index.lambdaHandler",
         code: lambda.Code.fromAsset(
-          path.join(__dirname, "../lambda", "check-project-version"),
+          path.join(__dirname, "../../lambda", "check-project-version"),
           { exclude: ["node_modules"] }
         ),
-        layers: [buildModelFunctionLayer],
+        layers: [props.buildModelFunctionLayer],
       }
     );
-    checkProjectVersion.addToRolePolicy(
+    checkProjectVersionFunction.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         resources: ["*"],
@@ -72,21 +66,12 @@ export class GlobalModelStepFunction extends Construct {
       })
     );
 
-    const buildModelResultTopic = new sns.Topic(this, "BuildModelResultTopic", {
-      displayName: "Build Model Result Topic",
-    });
-
-    const regionalData = props.RegionalStacks.map((c) => ({
-      region: c.region,
-      trainingDataBucket: c.trainingDataBucket.bucketName,
-      outputBucket: c.outputBucket.bucketName,
-    }));
     const setRegionalData = new sfn.Pass(this, "Set Regional Data", {
       comment: "Set Regional Data",
-      result: { value: sfn.Result.fromArray(regionalData) },
+      result: { value: sfn.Result.fromArray(props.regionalData) },
       resultPath: "$.regions",
     });
-    const map = new sfn.Map(this, "Map State", {
+    const buildModelMap = new sfn.Map(this, "Map State", {
       comment: "Parallel Map to create regional model.",
       inputPath: "$",
       parameters: {
@@ -116,14 +101,12 @@ export class GlobalModelStepFunction extends Construct {
       }
     );
     const getStatus = new tasks.LambdaInvoke(this, "Get Job Status", {
-      lambdaFunction: checkProjectVersion,
-      // Pass just the field named "guid" into the Lambda, put the
-      // Lambda's result in a field called "status" in the response
+      lambdaFunction: checkProjectVersionFunction,
       inputPath: "$",
       outputPath: "$.Payload",
     });
     const finalStatus = new sfn.Pass(this, "Final", {
-      comment: "Set Regional Data",
+      comment: "Final Result",
     });
     const regionalTasks = buildModelLambdaTask
       .next(waitX)
@@ -145,27 +128,32 @@ export class GlobalModelStepFunction extends Construct {
           )
           .otherwise(waitX)
       );
-    map.iterator(regionalTasks);
+    buildModelMap.iterator(regionalTasks);
 
     const notifyBuildModelCompletedTask = new tasks.SnsPublish(
       this,
-      "Notify Build Model Completed Task",
+      "Notify Global Custom Labels Model Task",
       {
-        topic: buildModelResultTopic,
+        topic: props.buildModelResultTopic,
         subject:
-          "Global Rekognition Custom Label Model Result for Project: " +
+          "Global Rekognition Custom Label Model Build Result for Project: " +
           sfn.TaskInput.fromJsonPathAt("$.[0].ProjectName") +
           ", Version: " +
           sfn.TaskInput.fromJsonPathAt("$.[0].VersionName"),
         message: sfn.TaskInput.fromJsonPathAt("$"),
       }
     );
-    const definition = setRegionalData
-      .next(map)
+    const buildModleDefinition = setRegionalData
+      .next(buildModelMap)
       .next(notifyBuildModelCompletedTask);
-    new sfn.StateMachine(this, "GlobalCustomLabelsModelStateMachine", {
-      definition,
-      timeout: Duration.hours(12),
-    });
+    const buildGlobalCustomLabelsModelStateMachine = new sfn.StateMachine(
+      this,
+      "GlobalCustomLabelsModelStateMachine",
+      {
+        stateMachineName: "BuildGlobalCustomLabelsModelStateMachine",
+        definition: buildModleDefinition,
+        timeout: Duration.hours(12),
+      }
+    );
   }
 }
