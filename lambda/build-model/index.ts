@@ -77,8 +77,8 @@ export const lambdaHandler = async (
       const createProjectCommandOutput: CreateProjectCommandOutput = await rekognitionClient.send(
         createProjectCommand
       );
-
       console.log(createProjectCommandOutput);
+      projectArn = createProjectCommandOutput.ProjectArn;
     } else {
       projectArn = existingProject.ProjectArn;
 

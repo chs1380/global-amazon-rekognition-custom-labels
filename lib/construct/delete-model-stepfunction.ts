@@ -117,6 +117,21 @@ export class DeleteModelStepfunctionConstruct extends Construct {
       outputPath: "$.Payload",
     });
 
+    const deleteModelVersion = new tasks.LambdaInvoke(
+      this,
+      "Delete Model Version",
+      {
+        lambdaFunction: deleteModelVersionFunction,
+        inputPath: "$",
+        outputPath: "$.Payload",
+      }
+    );
+    const deleteModel = new tasks.LambdaInvoke(this, "Delete Model", {
+      lambdaFunction: deleteModelFunction,
+      inputPath: "$",
+      outputPath: "$.Payload",
+    });
+
     const setRegionalData = new sfn.Pass(this, "Set Regional Data", {
       comment: "Set Regional Data",
       result: { value: sfn.Result.fromArray(props.regionalData) },
@@ -134,6 +149,17 @@ export class DeleteModelStepfunctionConstruct extends Construct {
       inputPath: "$",
       outputPath: "$.Payload",
     });
+    const notifyBuildModelCompletedTask = new tasks.SnsPublish(
+      this,
+      "Notify Global Custom Labels Model Task",
+      {
+        topic: props.buildModelResultTopic,
+        subject:
+          "Global Rekognition Custom Label Model Delete Result for Project: " +
+          sfn.TaskInput.fromJsonPathAt("$.[0].ProjectName"),
+        message: sfn.TaskInput.fromJsonPathAt("$"),
+      }
+    );
     const modelMap = new sfn.Map(this, "Map State", {
       comment: "Parallel Map to create regional model.",
       inputPath: "$",
@@ -145,35 +171,30 @@ export class DeleteModelStepfunctionConstruct extends Construct {
       itemsPath: sfn.JsonPath.stringAt("$.regions.value"),
     });
 
-    /*
-{
-  "ProjectName": "DeepRacer",
-  "VersionNames": [
-    "first"
-  ],
-  "Region": "us-east-1",
-  "ProjectArn": "arn:aws:rekognition:us-east-1:111964674713:project/DeepRacer/1618824849431",
-  "ProjectVersionArns": [
-    "arn:aws:rekognition:us-east-1:111964674713:project/DeepRacer/version/first/1618824849554"
-  ]
-}
-*/
     const deleteVersionMap = new sfn.Map(this, "Delete Version Map State", {
       comment: "Parallel Map to delete regional model versions.",
       inputPath: "$",
       parameters: {
         "ProjectName.$": "$.ProjectName",
         "VersionNames.$": "$.VersionNames",
+        "Region.$": "$.Region",
         "ProjectVersionArns.$": "$.ProjectVersionArns",
         "ProjectArn.$": "$.ProjectArn",
-        "ProjectVersionArn.$": "$$.Map.Item.Value.$",
+        "ProjectVersionArn.$": "$$.Map.Item.Value",
       },
       itemsPath: sfn.JsonPath.stringAt("$.ProjectVersionArns"),
     });
     const finalStatus = new sfn.Pass(this, "Final", {
       comment: "Final Result",
     });
-    const regionalTasks = getModelDetails
+    const pass = new sfn.Pass(this, "Pass", {
+      comment: "Pass",
+    });
+    const completeParallel = new sfn.Pass(this, "Complete Parallel Delete", {
+      comment: "Complete Parallel Delete",
+    });
+
+    const deleteVersionTasks = deleteModelVersion
       .next(waitX)
       .next(getStatus)
       .next(
@@ -184,26 +205,25 @@ export class DeleteModelStepfunctionConstruct extends Construct {
             sfn.Condition.numberGreaterThanEquals("$.Counter", 50),
             jobFailed
           )
+          .when(sfn.Condition.stringEquals("$.Status", "DELETED"), finalStatus)
           .when(
-            sfn.Condition.stringEquals("$.Status", "TRAINING_COMPLETED"),
+            sfn.Condition.stringEquals("$.Status", "NO VERSION"),
             finalStatus
           )
           .otherwise(waitX)
       );
 
-    const notifyBuildModelCompletedTask = new tasks.SnsPublish(
-      this,
-      "Notify Global Custom Labels Model Task",
-      {
-        topic: props.buildModelResultTopic,
-        subject:
-          "Global Rekognition Custom Label Model Build Result for Project: " +
-          sfn.TaskInput.fromJsonPathAt("$.[0].ProjectName") +
-          ", Version: " +
-          sfn.TaskInput.fromJsonPathAt("$.[0].VersionNames"),
-        message: sfn.TaskInput.fromJsonPathAt("$"),
-      }
-    );
+    deleteVersionMap.iterator(deleteVersionTasks);
+
+    const parallel = new sfn.Parallel(this, "Parallel Delete Model Version", {
+      outputPath: "$.[0]",
+    });
+    parallel.branch(pass);
+    parallel.branch(deleteVersionMap);
+    parallel.next(completeParallel).next(deleteModel);
+
+    const regionalTasks = getModelDetails.next(parallel);
+
     modelMap.iterator(regionalTasks);
     const deleteModleDefinition = setRegionalData
       .next(modelMap)
