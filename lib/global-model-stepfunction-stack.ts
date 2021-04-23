@@ -5,6 +5,8 @@ import { RegionalStack } from "./global-management-stack";
 import { CreateBuiidModelStepfunctionConstruct } from "./construct/create-build-model-stepfunction";
 import { DeleteModelStepfunctionConstruct } from "./construct/delete-model-stepfunction";
 import * as sns from "@aws-cdk/aws-sns";
+import { StartModelStepfunctionConstruct } from "./construct/start-model-version-stepfunction";
+import { StopModelStepfunctionConstruct } from "./construct/stop-model-version-stepfunction";
 
 export interface RegionalData {
   region: string;
@@ -37,7 +39,7 @@ export class GlobalModelStepFunctionStack extends cdk.Stack {
       }
     );
     const buildModelResultTopic = new sns.Topic(this, "BuildModelResultTopic", {
-      displayName: "Build Model Result Topic",
+      displayName: "Global Rekognition Custom Labels Topic",
     });
 
     const regionalData: RegionalData[] = props.RegionalStacks.map((c) => ({
@@ -65,154 +67,25 @@ export class GlobalModelStepFunctionStack extends cdk.Stack {
         buildModelResultTopic,
       }
     );
-  }
-}
-/*
-  createDeleteGlobalCustomLabelsModelStateMachine(
-    regionalData: RegionalData[]
-  ) {
-    const getModelDetailsFunction = new lambda.Function(
+    const startModelStepfunctionConstruct = new StartModelStepfunctionConstruct(
       this,
-      "GetModelDetailsFunction (Delete Model)",
+      "StartModelStepfunctionConstruct",
       {
-        runtime: lambda.Runtime.NODEJS_14_X,
-        handler: "index.lambdaHandler",
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, "../lambda", "get-model-details"),
-          { exclude: ["node_modules"] }
-        ),
-        layers: [this.buildModelFunctionLayer],
+        ...props,
+        buildModelFunctionLayer: buildModelFunctionLayer,
+        regionalData,
+        buildModelResultTopic,
       }
     );
-    getModelDetailsFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        resources: ["*"],
-        actions: [
-          "rekognition:DescribeProjects",
-          "rekognition:DescribeProjectVersions",
-        ],
-      })
-    );
-
-    const deleteModelFunction = new lambda.Function(
+    const stopModelStepfunctionConstruct = new StopModelStepfunctionConstruct(
       this,
-      "DeleteModelFunction (Delete Model)",
+      "StopModelStepfunctionConstruct",
       {
-        runtime: lambda.Runtime.NODEJS_14_X,
-        handler: "index.lambdaHandler",
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, "../lambda", "delete-model"),
-          { exclude: ["node_modules"] }
-        ),
-        layers: [this.buildModelFunctionLayer],
-      }
-    );
-    deleteModelFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        resources: ["*"],
-        actions: ["rekognition:DeleteProject"],
-      })
-    );
-    const deleteModelVersionFunction = new lambda.Function(
-      this,
-      "DeleteModelVersionFunction (Delete Model)",
-      {
-        runtime: lambda.Runtime.NODEJS_14_X,
-        handler: "index.lambdaHandler",
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, "../lambda", "delete-model-version"),
-          { exclude: ["node_modules"] }
-        ),
-        layers: [this.buildModelFunctionLayer],
-      }
-    );
-    deleteModelVersionFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        resources: ["*"],
-        actions: ["rekognition:DeleteProjectVersion"],
-      })
-    );
-    const getModelDetails = new tasks.LambdaInvoke(
-      this,
-      "Get Model Details (Delete Model)",
-      {
-        lambdaFunction: getModelDetailsFunction,
-        inputPath: "$",
-        outputPath: "$.Payload",
-      }
-    );
-
-    const setRegionalData = new sfn.Pass(
-      this,
-      "Set Regional Data (Delete Model)",
-      {
-        comment: "Set Regional Data",
-        result: { value: sfn.Result.fromArray(regionalData) },
-        resultPath: "$.regions",
-      }
-    );
-    const jobFailed = new sfn.Fail(this, "Delete Model Failed (Delete Model)", {
-      cause: "Project Verison Error.",
-      error: "DescribeJob returned FAILED",
-    });
-    const waitX = new sfn.Wait(this, "Wait 5 minutes (Delete Model)", {
-      time: sfn.WaitTime.duration(Duration.seconds(5)),
-    });
-    const getStatus = new tasks.LambdaInvoke(
-      this,
-      "Get Job Status  (Delete Model)",
-      {
-        lambdaFunction: this.checkProjectVersionFunction,
-        inputPath: "$",
-        outputPath: "$.Payload",
-      }
-    );
-    const modelMap = new sfn.Map(this, "Map State (Delete Model)", {
-      comment: "Parallel Map to create regional model.",
-      inputPath: "$",
-      parameters: {
-        "ProjectName.$": "$.ProjectName",
-        "VersionName.$": "$.VersionName",
-        "Region.$": "$$.Map.Item.Value.region",
-      },
-      itemsPath: sfn.JsonPath.stringAt("$.regions.value"),
-    });
-    const finalStatus = new sfn.Pass(this, "Final (Delete Model)", {
-      comment: "Final Result",
-    });
-    const regionalTasks = getModelDetails
-      .next(waitX)
-      .next(getStatus)
-      .next(
-        new sfn.Choice(this, "Training Complete? (Delete Model)")
-          // Look at the "status" field
-          .when(sfn.Condition.stringEquals("$.Status", "FAILED"), jobFailed)
-          .when(
-            sfn.Condition.numberGreaterThanEquals("$.Counter", 50),
-            jobFailed
-          )
-          .when(
-            sfn.Condition.stringEquals("$.Status", "TRAINING_COMPLETED"),
-            finalStatus
-          )
-          .otherwise(waitX)
-      );
-    const deleteModleDefinition = setRegionalData
-      .next(modelMap)
-      .next(getModelDetails);
-    modelMap.iterator(regionalTasks);
-    const deleteGlobalCustomLabelsModelStateMachine = new sfn.StateMachine(
-      this,
-      "DeteleGlobalCustomLabelsModelStateMachine",
-      {
-        stateMachineName: "DeleteGlobalCustomLabelsModelStateMachine",
-        definition: deleteModleDefinition,
-        timeout: Duration.hours(12),
+        ...props,
+        buildModelFunctionLayer: buildModelFunctionLayer,
+        regionalData,
+        buildModelResultTopic,
       }
     );
   }
 }
-*/

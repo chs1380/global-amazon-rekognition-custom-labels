@@ -18,7 +18,7 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
 
     // The code that defines your stack goes here
     this.trainingBucket = new s3.Bucket(this, "TrainingDataBucket", {
-      bucketName: "global-custom-labels-" + this.account + "-" + this.region,
+      bucketName: "globalcustomlabels" + this.account + "-" + this.region,
       autoDeleteObjects: true,
       removalPolicy: RemovalPolicy.DESTROY,
       versioned: true,
@@ -30,7 +30,7 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
     });
     this.outputBucket = new s3.Bucket(this, "outputBucket", {
       bucketName:
-        "global-custom-labels-" + this.account + "-" + this.region + "-output",
+        "globalcustomlabels" + this.account + "-" + this.region + "-output",
       autoDeleteObjects: true,
       removalPolicy: RemovalPolicy.DESTROY,
       versioned: true,
@@ -126,7 +126,7 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
         description: "A layer to test the L2 construct",
       }
     );
-    const buildModelFunction = new lambda.Function(this, "RunModelFunction", {
+    const callModelFunction = new lambda.Function(this, "RunModelFunction", {
       runtime: lambda.Runtime.NODEJS_14_X,
       handler: "index.lambdaHandler",
       code: lambda.Code.fromAsset(
@@ -140,17 +140,17 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
       },
     });
 
-    buildModelFunction.role!.addManagedPolicy(
+    callModelFunction.role!.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName(
         "AmazonRekognitionCustomLabelsFullAccess"
       )
     );
-    buildModelFunction.role!.addManagedPolicy(
+    callModelFunction.role!.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName("AmazonS3ReadOnlyAccess")
     );
 
     const buildModelDefaultIntegration = new LambdaProxyIntegration({
-      handler: buildModelFunction,
+      handler: callModelFunction,
     });
     const httpApi = new HttpApi(this, "HttpApi");
     httpApi.addRoutes({

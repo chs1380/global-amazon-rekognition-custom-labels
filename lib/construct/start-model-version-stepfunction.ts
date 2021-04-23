@@ -9,7 +9,7 @@ import { RegionalStack } from "../global-management-stack";
 import { RegionalData } from "../global-model-stepfunction-stack";
 import { Topic } from "@aws-cdk/aws-sns";
 
-export interface DeleteModelStepfunctionProps {
+export interface StartModelStepfunctionProps {
   maximumModelBuildTime: Number;
   RegionalStacks: RegionalStack[];
   buildModelFunctionLayer: LayerVersion;
@@ -17,11 +17,11 @@ export interface DeleteModelStepfunctionProps {
   buildModelResultTopic: Topic;
 }
 
-export class DeleteModelStepfunctionConstruct extends Construct {
+export class StartModelStepfunctionConstruct extends Construct {
   constructor(
     scope: Construct,
     id: string,
-    props: DeleteModelStepfunctionProps
+    props: StartModelStepfunctionProps
   ) {
     super(scope, id);
     const getModelDetailsFunction = new lambda.Function(
@@ -48,44 +48,24 @@ export class DeleteModelStepfunctionConstruct extends Construct {
       })
     );
 
-    const deleteModelFunction = new lambda.Function(
+    const startModelVersionFunction = new lambda.Function(
       this,
-      "DeleteModelFunction",
+      "StartModelVersionFunction",
       {
         runtime: lambda.Runtime.NODEJS_14_X,
         handler: "index.lambdaHandler",
         code: lambda.Code.fromAsset(
-          path.join(__dirname, "../../lambda", "delete-model"),
+          path.join(__dirname, "../../lambda", "start-model-version"),
           { exclude: ["node_modules"] }
         ),
         layers: [props.buildModelFunctionLayer],
       }
     );
-    deleteModelFunction.addToRolePolicy(
+    startModelVersionFunction.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         resources: ["*"],
-        actions: ["rekognition:DeleteProject"],
-      })
-    );
-    const deleteModelVersionFunction = new lambda.Function(
-      this,
-      "DeleteModelVersionFunction",
-      {
-        runtime: lambda.Runtime.NODEJS_14_X,
-        handler: "index.lambdaHandler",
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, "../../lambda", "delete-model-version"),
-          { exclude: ["node_modules"] }
-        ),
-        layers: [props.buildModelFunctionLayer],
-      }
-    );
-    deleteModelVersionFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        resources: ["*"],
-        actions: ["rekognition:DeleteProjectVersion"],
+        actions: ["rekognition:StartProjectVersion"],
       })
     );
 
@@ -115,32 +95,27 @@ export class DeleteModelStepfunctionConstruct extends Construct {
       outputPath: "$.Payload",
     });
 
-    const deleteModelVersion = new tasks.LambdaInvoke(
+    const startModelVersion = new tasks.LambdaInvoke(
       this,
-      "Delete Model Version",
+      "Start Model Version",
       {
-        lambdaFunction: deleteModelVersionFunction,
+        lambdaFunction: startModelVersionFunction,
         inputPath: "$",
         outputPath: "$.Payload",
       }
     );
-    const deleteModel = new tasks.LambdaInvoke(this, "Delete Model", {
-      lambdaFunction: deleteModelFunction,
-      inputPath: "$",
-      outputPath: "$.Payload",
-    });
 
     const setRegionalData = new sfn.Pass(this, "Set Regional Data", {
       comment: "Set Regional Data",
       result: { value: sfn.Result.fromArray(props.regionalData) },
       resultPath: "$.regions",
     });
-    const jobFailed = new sfn.Fail(this, "Delete Model Verison Failed", {
+    const jobFailed = new sfn.Fail(this, "Start Model Verison Failed", {
       cause: "Project Verison Error.",
       error: "DescribeJob returned FAILED",
     });
     const waitX = new sfn.Wait(this, "Wait 5 minutes", {
-      time: sfn.WaitTime.duration(Duration.seconds(5)),
+      time: sfn.WaitTime.duration(Duration.minutes(5)),
     });
     const getStatus = new tasks.LambdaInvoke(this, "Get Job Status ", {
       lambdaFunction: checkProjectVersionFunction,
@@ -154,38 +129,37 @@ export class DeleteModelStepfunctionConstruct extends Construct {
       parameters: {
         "ProjectName.$": "$.ProjectName",
         "VersionNames.$": "$.VersionNames",
+        "MinInferenceUnits.$": "$.MinInferenceUnits",
         "Region.$": "$$.Map.Item.Value.region",
       },
       itemsPath: sfn.JsonPath.stringAt("$.regions.value"),
     });
 
-    const deleteVersionMap = new sfn.Map(this, "Delete Version Map State", {
-      comment: "Parallel Map to delete regional model versions.",
+    const startVersionMap = new sfn.Map(this, "Start Version Map State", {
+      comment: "Parallel Map to start regional model versions.",
       inputPath: "$",
       parameters: {
         "ProjectName.$": "$.ProjectName",
         "VersionNames.$": "$.VersionNames",
         "Region.$": "$.Region",
+        "MinInferenceUnits.$": "$.MinInferenceUnits",
         "ProjectVersionArns.$": "$.ProjectVersionArns",
         "ProjectArn.$": "$.ProjectArn",
         "ProjectVersionArn.$": "$$.Map.Item.Value",
       },
       itemsPath: sfn.JsonPath.stringAt("$.ProjectVersionArns"),
     });
-    const versionStatus = new sfn.Pass(this, "Verion Deleted", {
-      comment: "Verion Deleted",
+    const versionStatus = new sfn.Pass(this, "Version Started", {
+      comment: "Version Started",
     });
     const pass = new sfn.Pass(this, "Pass", {
       comment: "Pass",
     });
-    const keepProject = new sfn.Pass(this, "Keep Project", {
-      comment: "Keep Project",
-    });
     const completeParallel = new sfn.Pass(
       this,
-      "Complete Parallel Delete Version",
+      "Complete Parallel Start Version",
       {
-        comment: "Complete Parallel Delete Version",
+        comment: "Complete Parallel Start Version",
       }
     );
 
@@ -194,59 +168,50 @@ export class DeleteModelStepfunctionConstruct extends Construct {
       "Notify Global Custom Labels Model Task",
       {
         topic: props.buildModelResultTopic,
-        subject: "Global Rekognition Custom Label Model Delete Result",
+        subject: "Global Rekognition Custom Label Model Start Result",
         message: sfn.TaskInput.fromJsonPathAt("$"),
       }
     );
 
-    const deleteVersionTasks = deleteModelVersion
+    const startVersionTasks = startModelVersion
       .next(waitX)
       .next(getStatus)
       .next(
-        new sfn.Choice(this, "Delete Versions Complete?")
+        new sfn.Choice(this, "Start Version Complete?")
           .when(sfn.Condition.stringEquals("$.Status", "FAILED"), jobFailed)
           .when(
             sfn.Condition.numberGreaterThanEquals("$.Counter", 50),
             jobFailed
           )
           .when(
-            sfn.Condition.stringEquals("$.Status", "DELETED"),
-            versionStatus
-          )
-          .when(
-            sfn.Condition.stringEquals("$.Status", "NO VERSION"),
+            sfn.Condition.stringEquals("$.Status", "RUNNING"),
             versionStatus
           )
           .otherwise(waitX)
       );
 
-    deleteVersionMap.iterator(deleteVersionTasks);
+    startVersionMap.iterator(startVersionTasks);
 
-    const parallel = new sfn.Parallel(this, "Parallel Delete Model Version", {
+    const parallel = new sfn.Parallel(this, "Parallel Start Model Version", {
       outputPath: "$.[0]",
     });
     parallel.branch(pass);
-    parallel.branch(deleteVersionMap);
+    parallel.branch(startVersionMap);
     parallel.next(completeParallel);
-    completeParallel.next(
-      new sfn.Choice(this, "Delete Project?")
-        .when(sfn.Condition.isNotPresent("$.VersionNames[0]"), deleteModel)
-        .otherwise(keepProject)
-    );
 
     const regionalTasks = getModelDetails.next(parallel);
 
     modelMap.iterator(regionalTasks);
-    const deleteModelDefinition = setRegionalData
+    const startModelVersionDefinition = setRegionalData
       .next(modelMap)
       .next(notifyBuildModelCompletedTask);
 
-    const deleteGlobalCustomLabelsModelStateMachine = new sfn.StateMachine(
+    const startlobalCustomLabelsModelStateMachine = new sfn.StateMachine(
       this,
-      "DeteleGlobalCustomLabelsModelStateMachine",
+      "StartGlobalCustomLabelsModelVersionStateMachine",
       {
-        stateMachineName: "DeleteGlobalCustomLabelsModelStateMachine",
-        definition: deleteModelDefinition,
+        stateMachineName: "StartGlobalCustomLabelsModelVersionStateMachine",
+        definition: startModelVersionDefinition,
         timeout: Duration.hours(12),
       }
     );

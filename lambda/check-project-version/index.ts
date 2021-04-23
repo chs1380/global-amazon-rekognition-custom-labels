@@ -9,7 +9,7 @@ interface DescribeModelVersionEvent {
   ProjectArn: string;
   ManifestKey: string;
   VersionName: string;
-  // VersionNames: string[];
+  VersionNames: string[];
   Region: string;
   TrainingDataBucket: string;
   OutputBucket: string;
@@ -28,14 +28,9 @@ export const lambdaHandler = async (
       region: event.Region,
     });
     let resultEvent: DescribeModelVersionEvent = { ...event };
-    // if (event.VersionNames && event.VersionNames.length == 0) {
-    //   resultEvent.Status = "NO VERSION";
-    //   return resultEvent;
-    // }
     let params: DescribeProjectVersionsCommandInput = {
       ProjectArn: event.ProjectArn,
-      VersionNames: [event.VersionName],
-      // VersionNames: event.VersionNames ?? [event.VersionName],
+      VersionNames: event.VersionNames ?? [event.VersionName],
     };
     let describeProjectVersionsCommand = new DescribeProjectVersionsCommand(
       params

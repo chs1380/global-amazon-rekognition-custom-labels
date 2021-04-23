@@ -108,7 +108,7 @@ export const lambdaHandler = async (
       VersionName: event.VersionName,
       OutputConfig: {
         S3Bucket: event.OutputBucket,
-        S3KeyPrefix: "output/",
+        S3KeyPrefix: "output",
       },
       TestingData: {
         AutoCreate: true,

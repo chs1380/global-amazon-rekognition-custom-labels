@@ -108,6 +108,7 @@ export class CreateBuiidModelStepfunctionConstruct extends Construct {
     const finalStatus = new sfn.Pass(this, "Final", {
       comment: "Final Result",
     });
+
     const regionalTasks = buildModelLambdaTask
       .next(waitX)
       .next(getStatus)
@@ -135,11 +136,7 @@ export class CreateBuiidModelStepfunctionConstruct extends Construct {
       "Notify Global Custom Labels Model Task",
       {
         topic: props.buildModelResultTopic,
-        subject:
-          "Global Rekognition Custom Label Model Build Result for Project: " +
-          sfn.TaskInput.fromJsonPathAt("$.[0].ProjectName") +
-          ", Version: " +
-          sfn.TaskInput.fromJsonPathAt("$.[0].VersionName"),
+        subject: "Global Rekognition Custom Label Model Build Result",
         message: sfn.TaskInput.fromJsonPathAt("$"),
       }
     );
