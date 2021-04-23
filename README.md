@@ -8,7 +8,7 @@ This project helps you deploy and manage Amazon Rekognition Custom Labels projec
 ## Sample Command to copy dataset into management dataset bucket
 Dataset will replicate to all regional dataset bucket.
 
-aws s3 sync s3://cyrus-datasets s3://globalcustomlabelsmanagement111964674713us-east-1 --source-region ap-east-1 
+aws s3 sync s3://cyrus-datasets s3://custom-labels-global-111964674713us-east-1 --source-region ap-east-1 
 
 manifest file will be replace the souce bucket name to the distination bucket name.
 
@@ -23,10 +23,17 @@ manifest file will be replace the souce bucket name to the distination bucket na
 
 
 # delete-model-stepfunction
+Delete model and all versions
 {
     "ProjectName": "DeepRacer",  	
   	"VersionNames": []
 }
+Delete model and certain version
+{
+    "ProjectName": "DeepRacer",  	
+  	"VersionNames": ["first"]
+}
+
 
 
 # start-model-version-stepfunction

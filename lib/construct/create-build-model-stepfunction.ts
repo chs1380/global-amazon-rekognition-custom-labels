@@ -136,7 +136,7 @@ export class CreateBuiidModelStepfunctionConstruct extends Construct {
       "Notify Global Custom Labels Model Task",
       {
         topic: props.buildModelResultTopic,
-        subject: "Global Rekognition Custom Label Model Build Result",
+        subject: "Global Rekognition Custom Label Create Version Result",
         message: sfn.TaskInput.fromJsonPathAt("$"),
       }
     );

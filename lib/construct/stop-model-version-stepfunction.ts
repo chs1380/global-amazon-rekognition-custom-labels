@@ -162,7 +162,7 @@ export class StopModelStepfunctionConstruct extends Construct {
       "Notify Global Custom Labels Model Task",
       {
         topic: props.buildModelResultTopic,
-        subject: "Global Rekognition Custom Label Model Stop Result",
+        subject: "Global Rekognition Custom Label Stop Version Result",
         message: sfn.TaskInput.fromJsonPathAt("$"),
       }
     );
