@@ -7,8 +7,8 @@ import { ManagedPolicy } from "@aws-cdk/aws-iam";
 import * as iam from "@aws-cdk/aws-iam";
 
 import { LayerVersion } from "@aws-cdk/aws-lambda";
-import { RegionalStack } from "../global-management-stack";
-import { RegionalData } from "../global-model-stepfunction-stack";
+import { RegionalStack } from "../global-s3-stack";
+import { RegionalData } from "../global-stepfunction-stack";
 import { Topic } from "@aws-cdk/aws-sns";
 
 export interface CreateBuiidModelStepfunctionProps {
@@ -20,6 +20,7 @@ export interface CreateBuiidModelStepfunctionProps {
 }
 
 export class CreateBuiidModelStepfunctionConstruct extends Construct {
+  public readonly stateMachine: sfn.StateMachine;
   constructor(
     scope: Construct,
     id: string,
@@ -143,7 +144,7 @@ export class CreateBuiidModelStepfunctionConstruct extends Construct {
     const buildModleDefinition = setRegionalData
       .next(buildModelMap)
       .next(notifyBuildModelCompletedTask);
-    const buildGlobalCustomLabelsModelStateMachine = new sfn.StateMachine(
+    this.stateMachine = new sfn.StateMachine(
       this,
       "GlobalCustomLabelsModelStateMachine",
       {

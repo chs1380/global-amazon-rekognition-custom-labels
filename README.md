@@ -35,7 +35,6 @@ Delete model and certain version
 }
 
 
-
 # start-model-version-stepfunction
 {
     "ProjectName": "DeepRacer",

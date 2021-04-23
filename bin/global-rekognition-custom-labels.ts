@@ -2,9 +2,9 @@
 import "source-map-support/register";
 import * as cdk from "@aws-cdk/core";
 import { GlobalRekognitionCustomLabelsRegionalStack } from "../lib/regional-stack";
-import { GlobalRekognitionCustomLabelsManagementStack } from "../lib/global-management-stack";
+import { GlobalRekognitionCustomLabelsS3Stack } from "../lib/global-s3-stack";
 import * as s3 from "@aws-cdk/aws-s3";
-import { GlobalModelStepFunctionStack } from "../lib/global-model-stepfunction-stack";
+import { GlobalRekognitionCustomLabelsStepFunctionStack } from "../lib/global-stepfunction-stack";
 
 //Amazon Rekognition Custom Labels
 //https://docs.aws.amazon.com/general/latest/gr/rekognition.html
@@ -37,7 +37,7 @@ const createRegionalStack = (
 } => {
   const stack = new GlobalRekognitionCustomLabelsRegionalStack(
     app,
-    "GlobalRekognitionCustomLabelsStack-" + region,
+    "GlobalRekognitionCustomLabelsRegionalStack-" + region,
     {
       env: {
         account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -56,9 +56,9 @@ const createRegionalStack = (
 
 const regionalStacks = supportedRegions.map(createRegionalStack);
 
-const managementStack = new GlobalRekognitionCustomLabelsManagementStack(
+const globalRekognitionCustomLabelsS3Stack = new GlobalRekognitionCustomLabelsS3Stack(
   app,
-  "GlobalRekognitionCustomLabelsManagementStack-" + managementRegion,
+  "GlobalRekognitionCustomLabelsS3Stack-" + managementRegion,
   {
     env: {
       account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -68,11 +68,13 @@ const managementStack = new GlobalRekognitionCustomLabelsManagementStack(
     RegionalStacks: regionalStacks,
   }
 );
-regionalStacks.map((s) => managementStack.addDependency(s.stack));
+regionalStacks.map((s) =>
+  globalRekognitionCustomLabelsS3Stack.addDependency(s.stack)
+);
 
-const globalModelStepFunctionStack = new GlobalModelStepFunctionStack(
+const lobalRekognitionCustomLabelsStepFunctionStack = new GlobalRekognitionCustomLabelsStepFunctionStack(
   app,
-  "GlobalModelStepFunctionStack-" + managementRegion,
+  "GlobalRekognitionCustomLabelsStepFunctionStack-" + managementRegion,
   {
     env: {
       account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -82,4 +84,6 @@ const globalModelStepFunctionStack = new GlobalModelStepFunctionStack(
     RegionalStacks: regionalStacks,
   }
 );
-regionalStacks.map((s) => globalModelStepFunctionStack.addDependency(s.stack));
+regionalStacks.map((s) =>
+  lobalRekognitionCustomLabelsStepFunctionStack.addDependency(s.stack)
+);

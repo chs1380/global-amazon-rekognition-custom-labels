@@ -11,17 +11,16 @@ export interface RegionalStack {
   trainingDataBucket: s3.Bucket;
   outputBucket: s3.Bucket;
 }
-interface GlobalRekognitionCustomLabelsManagementStackProps
-  extends cdk.StackProps {
+interface GlobalRekognitionCustomLabelsS3StackProps extends cdk.StackProps {
   maximumModelBuildTime: Number;
   RegionalStacks: RegionalStack[];
 }
 
-export class GlobalRekognitionCustomLabelsManagementStack extends cdk.Stack {
+export class GlobalRekognitionCustomLabelsS3Stack extends cdk.Stack {
   constructor(
     scope: cdk.Construct,
     id: string,
-    props: GlobalRekognitionCustomLabelsManagementStackProps
+    props: GlobalRekognitionCustomLabelsS3StackProps
   ) {
     super(scope, id, props);
 

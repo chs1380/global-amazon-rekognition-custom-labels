@@ -1,12 +1,13 @@
 import * as cdk from "@aws-cdk/core";
 import * as lambda from "@aws-cdk/aws-lambda";
 import path = require("path");
-import { RegionalStack } from "./global-management-stack";
+import { RegionalStack } from "./global-s3-stack";
 import { CreateBuiidModelStepfunctionConstruct } from "./construct/create-build-model-stepfunction";
 import { DeleteModelStepfunctionConstruct } from "./construct/delete-model-stepfunction";
 import * as sns from "@aws-cdk/aws-sns";
 import { StartModelStepfunctionConstruct } from "./construct/start-model-version-stepfunction";
 import { StopModelStepfunctionConstruct } from "./construct/stop-model-version-stepfunction";
+import { CfnOutput } from "@aws-cdk/core";
 
 export interface RegionalData {
   region: string;
@@ -14,16 +15,17 @@ export interface RegionalData {
   outputBucket: string;
 }
 
-export interface GlobalModelStepFunctionProps extends cdk.StackProps {
+export interface GlobalRekognitionCustomLabelsStepFunctionProps
+  extends cdk.StackProps {
   maximumModelBuildTime: Number;
   RegionalStacks: RegionalStack[];
 }
 
-export class GlobalModelStepFunctionStack extends cdk.Stack {
+export class GlobalRekognitionCustomLabelsStepFunctionStack extends cdk.Stack {
   constructor(
     scope: cdk.Construct,
     id: string,
-    props: GlobalModelStepFunctionProps
+    props: GlobalRekognitionCustomLabelsStepFunctionProps
   ) {
     super(scope, id, props);
     const buildModelFunctionLayer = new lambda.LayerVersion(
@@ -47,7 +49,7 @@ export class GlobalModelStepFunctionStack extends cdk.Stack {
       trainingDataBucket: c.trainingDataBucket.bucketName,
       outputBucket: c.outputBucket.bucketName,
     }));
-    const createBuiidModelStepfunction = new CreateBuiidModelStepfunctionConstruct(
+    const createBuiidModelStepfunctionConstruct = new CreateBuiidModelStepfunctionConstruct(
       this,
       "CreateBuiidModelStepfunctionConstruct",
       {
@@ -87,5 +89,21 @@ export class GlobalModelStepFunctionStack extends cdk.Stack {
         buildModelResultTopic,
       }
     );
+    new CfnOutput(this, "CreateBuiidModelStepfunction", {
+      value: createBuiidModelStepfunctionConstruct.stateMachine.stateMachineArn,
+      description: "Create Buiid Model Stepfunction",
+    });
+        new CfnOutput(this, "DeleteModelStepfunction", {
+      value: deleteModelStepfunctionConstruct.stateMachine.stateMachineArn,
+      description: "Delete Model Stepfunction",
+    });
+        new CfnOutput(this, "StartModelStepfunction", {
+      value: startModelStepfunctionConstruct.stateMachine.stateMachineArn,
+      description: "Start Model Stepfunction",
+    });
+        new CfnOutput(this, "StopModelStepfunction", {
+      value: stopModelStepfunctionConstruct.stateMachine.stateMachineArn,
+      description: "Stop Model Stepfunction",
+    });
   }
 }
