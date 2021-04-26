@@ -5,9 +5,10 @@ import { CfnOutput, RemovalPolicy, Duration } from "@aws-cdk/core";
 import { S3EventSource } from "@aws-cdk/aws-lambda-event-sources";
 import * as lambda from "@aws-cdk/aws-lambda";
 import * as path from "path";
-import { HttpApi, HttpMethod } from "@aws-cdk/aws-apigatewayv2";
-import { LambdaProxyIntegration } from "@aws-cdk/aws-apigatewayv2-integrations";
 import { ManagedPolicy } from "@aws-cdk/aws-iam";
+import * as elbv2 from "@aws-cdk/aws-elasticloadbalancingv2";
+import * as targets from "@aws-cdk/aws-elasticloadbalancingv2-targets";
+import * as ec2 from "@aws-cdk/aws-ec2";
 
 export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
   public readonly trainingBucket: s3.Bucket;
@@ -59,6 +60,17 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
         },
       })
     );
+
+    const tempImageBucket = new s3.Bucket(this, "TempImageBucket", {
+      autoDeleteObjects: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+      versioned: false,
+      lifecycleRules: [
+        {
+          expiration: Duration.days(1),
+        },
+      ],
+    });
 
     this.trainingBucket.addToResourcePolicy(
       new iam.PolicyStatement({
@@ -114,49 +126,50 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
     );
     this.trainingBucket.grantReadWrite(processManifestFunction);
 
-    const buildModelFunctionLayer = new lambda.LayerVersion(
-      this,
-      "BuildModelFunctionLayer",
-      {
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, "../lambda", "build-model-layer")
-        ),
-        compatibleRuntimes: [lambda.Runtime.NODEJS_14_X],
-        license: "Apache-2.0",
-        description: "A layer to test the L2 construct",
-      }
-    );
-    const callModelFunction = new lambda.Function(this, "RunModelFunction", {
+    const callModelLayer = new lambda.LayerVersion(this, "CallModelLayer", {
+      code: lambda.Code.fromAsset(
+        path.join(__dirname, "../lambda", "call-model-layer")
+      ),
+      compatibleRuntimes: [lambda.Runtime.NODEJS_14_X],
+      license: "Apache-2.0",
+      description: "A layer to test the L2 construct",
+    });
+    const callModelFunction = new lambda.Function(this, "CallModelFunction", {
       runtime: lambda.Runtime.NODEJS_14_X,
       handler: "index.lambdaHandler",
       code: lambda.Code.fromAsset(
-        path.join(__dirname, "../lambda", "run-model"),
+        path.join(__dirname, "../lambda", "call-model"),
         { exclude: ["node_modules"] }
       ),
-      layers: [buildModelFunctionLayer],
+      layers: [callModelLayer],
       environment: {
-        trainingBucket: this.trainingBucket.bucketName,
-        outputBucket: this.outputBucket.bucketName,
+        tempImageBucket: tempImageBucket.bucketName,
       },
     });
-
     callModelFunction.role!.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName(
-        "AmazonRekognitionCustomLabelsFullAccess"
-      )
+      ManagedPolicy.fromAwsManagedPolicyName("AmazonRekognitionReadOnlyAccess")
     );
-    callModelFunction.role!.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName("AmazonS3ReadOnlyAccess")
-    );
+    tempImageBucket.grantPut(callModelFunction);
 
-    const buildModelDefaultIntegration = new LambdaProxyIntegration({
-      handler: callModelFunction,
+    const vpc = new ec2.Vpc(this, "VPC", {
+      subnetConfiguration: [
+        {
+          subnetType: ec2.SubnetType.PUBLIC,
+          name: "Public",
+        },
+      ],
     });
-    const httpApi = new HttpApi(this, "HttpApi");
-    httpApi.addRoutes({
-      path: "/build",
-      methods: [HttpMethod.GET],
-      integration: buildModelDefaultIntegration,
+    const lb = new elbv2.ApplicationLoadBalancer(this, "ImageAlb", {
+      internetFacing: true,
+      vpc,
+    });
+
+    const listener = lb.addListener("Listener", { port: 80 });
+    listener.addTargets("Targets", {
+      targets: [new targets.LambdaTarget(callModelFunction)],
+      healthCheck: {
+        enabled: true,
+      },
     });
 
     new CfnOutput(this, "TrainingDataBucketName", {
@@ -172,9 +185,13 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
       value: this.region!,
       description: "Region",
     });
-    new CfnOutput(this, "RunModelHttpApiUrl", {
-      value: httpApi.url!,
-      description: "Run Model Http Api Url",
+    new CfnOutput(this, "loadBalancerArn", {
+      value: lb.loadBalancerArn,
+      description: "loadBalancerArn",
+    });
+    new CfnOutput(this, "loadBalancerDnsName", {
+      value: lb.loadBalancerDnsName,
+      description: "loadBalancerDnsName",
     });
   }
 }
