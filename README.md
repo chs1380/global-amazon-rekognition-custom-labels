@@ -46,5 +46,5 @@ Delete model and certain version
 # stop-model-version-stepfunction
 {
     "ProjectName": "DeepRacer",
-  	"VersionName": "first"
+  	"VersionNames": ["first"],
 }
