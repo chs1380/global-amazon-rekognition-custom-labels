@@ -62,17 +62,6 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
       })
     );
 
-    const tempImageBucket = new s3.Bucket(this, "TempImageBucket", {
-      autoDeleteObjects: true,
-      removalPolicy: RemovalPolicy.DESTROY,
-      versioned: false,
-      lifecycleRules: [
-        {
-          expiration: Duration.days(1),
-        },
-      ],
-    });
-
     this.trainingBucket.addToResourcePolicy(
       new iam.PolicyStatement({
         actions: ["s3:GetBucketAcl", "s3:GetBucketLocation"],
@@ -178,15 +167,14 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
         { exclude: ["node_modules"] }
       ),
       layers: [callModelLayer],
+      timeout: Duration.minutes(3),
       environment: {
-        tempImageBucket: tempImageBucket.bucketName,
         getModelDetailsFunctionArn: getModelDetailsFunction.functionArn,
       },
     });
     callModelFunction.role!.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName("AmazonRekognitionReadOnlyAccess")
     );
-    tempImageBucket.grantPut(callModelFunction);
     getModelDetailsFunction.grantInvoke(callModelFunction);
 
     const vpc = new ec2.Vpc(this, "VPC", {

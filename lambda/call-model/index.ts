@@ -1,14 +1,7 @@
 import { APIGatewayEvent, ALBResult, Context } from "aws-lambda";
 import {
-  PutObjectCommand,
-  PutObjectCommandOutput,
-  S3Client,
-} from "@aws-sdk/client-s3";
-
-import {
   RekognitionClient,
   DetectCustomLabelsCommand,
-  DetectCustomLabelsCommandInput,
   DetectCustomLabelsCommandOutput,
 } from "@aws-sdk/client-rekognition";
 
@@ -25,7 +18,7 @@ const rekognitionClient = new RekognitionClient({
 });
 const lambdaClient = new LambdaClient({ region: process.env.AWS_REGION });
 
-const localCache = [];
+let localCache = new Map<string, string>();
 
 export const lambdaHandler = async (
   event: APIGatewayEvent,
@@ -35,43 +28,40 @@ export const lambdaHandler = async (
   const result = await parser.parse(event);
   console.log(result.files);
 
-  const bucketName = process.env.tempImageBucket;
-  const s3Client = new S3Client({ region: process.env.AWS_REGION });
-  const putObjectCommand = new PutObjectCommand({
-    Bucket: bucketName,
-    Key: result.files[0].filename,
-    Body: result.files[0].content,
-    ContentType: result.files[0].contentType,
-  });
+  const key =
+    event.queryStringParameters!.ProjectName +
+    "-" +
+    event.queryStringParameters!.VersionName;
+  let projectVersionArn = "";
+  if (!localCache.has(key)) {
+    const getModelEvent = {
+      ProjectName: event.queryStringParameters!.ProjectName,
+      VersionNames: [event.queryStringParameters!.VersionName],
+      Region: process.env.AWS_REGION,
+    };
+    const enc = new TextEncoder();
 
-  const putObjectCommandOutput: PutObjectCommandOutput = await s3Client.send(
-    putObjectCommand
-  );
+    const invokeCommand = new InvokeCommand({
+      FunctionName: process.env.getModelDetailsFunctionArn,
+      Payload: enc.encode(JSON.stringify(getModelEvent)),
+    });
 
-  const getModelEvent = {
-    ProjectName: event.queryStringParameters!.ProjectName,
-    VersionNames: [event.queryStringParameters!.VersionName],
-    Region: process.env.AWS_REGION,
-  };
-  const enc = new TextEncoder();
+    const InvokeCommandOutput: InvokeCommandOutput = await lambdaClient.send(
+      invokeCommand
+    );
 
-  const invokeCommand = new InvokeCommand({
-    FunctionName: process.env.getModelDetailsFunctionArn,
-    Payload: enc.encode(JSON.stringify(getModelEvent)),
-  });
-
-  const InvokeCommandOutput: InvokeCommandOutput = await lambdaClient.send(
-    invokeCommand
-  );
-
-  const decoder = new TextDecoder("utf-8");
-  console.log(decoder.decode(InvokeCommandOutput.Payload));
-  const r = JSON.parse(decoder.decode(InvokeCommandOutput.Payload));
-  console.log(r);
+    const decoder = new TextDecoder("utf-8");
+    const r = JSON.parse(decoder.decode(InvokeCommandOutput.Payload));
+    console.log(r);
+    projectVersionArn = r.ProjectVersionArns[0];
+    localCache.set(key, projectVersionArn);
+  } else {
+    projectVersionArn = localCache.get(key)!;
+  }
 
   const detectCustomLabelsCommand: DetectCustomLabelsCommand = new DetectCustomLabelsCommand(
     {
-      ProjectVersionArn: "",
+      ProjectVersionArn: projectVersionArn,
       Image: { Bytes: Uint8Array.from(result.files[0].content) },
     }
   );
@@ -81,6 +71,9 @@ export const lambdaHandler = async (
   );
   return {
     statusCode: 200,
-    body: "ok",
+    body: JSON.stringify({
+      Region: process.env.AWS_REGION,
+      CustomLabels: deleteProjectCommandOutput.CustomLabels,
+    }),
   };
 };
