@@ -1,4 +1,4 @@
-# global-rekognition-custom-labels
+# Global Amazon rekognition Custom Labels
 This project helps you deploy and manage Amazon Rekognition Custom Labels project globally
 
 ## Deployment
