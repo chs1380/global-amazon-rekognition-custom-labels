@@ -5,7 +5,27 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 
+import {
+  RekognitionClient,
+  DetectCustomLabelsCommand,
+  DetectCustomLabelsCommandInput,
+  DetectCustomLabelsCommandOutput,
+} from "@aws-sdk/client-rekognition";
+
+import {
+  LambdaClient,
+  InvokeCommand,
+  InvokeCommandOutput,
+} from "@aws-sdk/client-lambda";
+
 import * as parser from "lambda-multipart-parser";
+
+const rekognitionClient = new RekognitionClient({
+  region: process.env.AWS_REGION,
+});
+const lambdaClient = new LambdaClient({ region: process.env.AWS_REGION });
+
+const localCache = [];
 
 export const lambdaHandler = async (
   event: APIGatewayEvent,
@@ -26,6 +46,38 @@ export const lambdaHandler = async (
 
   const putObjectCommandOutput: PutObjectCommandOutput = await s3Client.send(
     putObjectCommand
+  );
+
+  const getModelEvent = {
+    ProjectName: event.queryStringParameters!.ProjectName,
+    VersionNames: [event.queryStringParameters!.VersionName],
+    Region: process.env.AWS_REGION,
+  };
+  const enc = new TextEncoder();
+
+  const invokeCommand = new InvokeCommand({
+    FunctionName: process.env.getModelDetailsFunctionArn,
+    Payload: enc.encode(JSON.stringify(getModelEvent)),
+  });
+
+  const InvokeCommandOutput: InvokeCommandOutput = await lambdaClient.send(
+    invokeCommand
+  );
+
+  const decoder = new TextDecoder("utf-8");
+  console.log(decoder.decode(InvokeCommandOutput.Payload));
+  const r = JSON.parse(decoder.decode(InvokeCommandOutput.Payload));
+  console.log(r);
+
+  const detectCustomLabelsCommand: DetectCustomLabelsCommand = new DetectCustomLabelsCommand(
+    {
+      ProjectVersionArn: "",
+      Image: { Bytes: Uint8Array.from(result.files[0].content) },
+    }
+  );
+
+  const deleteProjectCommandOutput: DetectCustomLabelsCommandOutput = await rekognitionClient.send(
+    detectCustomLabelsCommand
   );
   return {
     statusCode: 200,

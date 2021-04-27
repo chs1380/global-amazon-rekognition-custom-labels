@@ -38,8 +38,8 @@ Delete model and certain version
 # start-model-version-stepfunction
 {
     "ProjectName": "DeepRacer",
-  	"VersionNames": ["first"]
-  	"MinInferenceUnits", 1
+  	"VersionNames": ["first"],
+  	"MinInferenceUnits": 1
 }
 
 

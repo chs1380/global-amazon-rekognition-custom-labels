@@ -9,6 +9,7 @@ import { ManagedPolicy } from "@aws-cdk/aws-iam";
 import * as elbv2 from "@aws-cdk/aws-elasticloadbalancingv2";
 import * as targets from "@aws-cdk/aws-elasticloadbalancingv2-targets";
 import * as ec2 from "@aws-cdk/aws-ec2";
+import * as ssm from "@aws-cdk/aws-ssm";
 
 export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
   public readonly trainingBucket: s3.Bucket;
@@ -126,6 +127,41 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
     );
     this.trainingBucket.grantReadWrite(processManifestFunction);
 
+    const buildModelFunctionLayer = new lambda.LayerVersion(
+      this,
+      "BuildModelFunctionLayer",
+      {
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, "../lambda", "build-model-layer")
+        ),
+        compatibleRuntimes: [lambda.Runtime.NODEJS_14_X],
+        license: "Apache-2.0",
+        description: "A layer to test the L2 construct",
+      }
+    );
+    const getModelDetailsFunction = new lambda.Function(
+      this,
+      "GetModelDetailsFunction",
+      {
+        runtime: lambda.Runtime.NODEJS_14_X,
+        handler: "index.lambdaHandler",
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, "../lambda", "get-model-details"),
+          { exclude: ["node_modules"] }
+        ),
+        layers: [buildModelFunctionLayer],
+      }
+    );
+    getModelDetailsFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        resources: ["*"],
+        actions: [
+          "rekognition:DescribeProjects",
+          "rekognition:DescribeProjectVersions",
+        ],
+      })
+    );
     const callModelLayer = new lambda.LayerVersion(this, "CallModelLayer", {
       code: lambda.Code.fromAsset(
         path.join(__dirname, "../lambda", "call-model-layer")
@@ -144,12 +180,14 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
       layers: [callModelLayer],
       environment: {
         tempImageBucket: tempImageBucket.bucketName,
+        getModelDetailsFunctionArn: getModelDetailsFunction.functionArn,
       },
     });
     callModelFunction.role!.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName("AmazonRekognitionReadOnlyAccess")
     );
     tempImageBucket.grantPut(callModelFunction);
+    getModelDetailsFunction.grantInvoke(callModelFunction);
 
     const vpc = new ec2.Vpc(this, "VPC", {
       subnetConfiguration: [
@@ -159,17 +197,34 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
         },
       ],
     });
+    const securityGroup = new ec2.SecurityGroup(this, "AlbSecurityGroup", {
+      vpc,
+    });
+    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80));
     const lb = new elbv2.ApplicationLoadBalancer(this, "ImageAlb", {
       internetFacing: true,
       vpc,
+      securityGroup,
     });
-
     const listener = lb.addListener("Listener", { port: 80 });
     listener.addTargets("Targets", {
       targets: [new targets.LambdaTarget(callModelFunction)],
       healthCheck: {
-        enabled: true,
+        enabled: false,
       },
+    });
+
+    const stack = cdk.Stack.of(this);
+    new ssm.StringParameter(this, "AlbSecurityGroupIdSSMParam", {
+      parameterName: `${stack.stackName}.albSecurityGroupId`,
+      description: "The security group Id of ALB",
+      stringValue: securityGroup.securityGroupId,
+    });
+
+    new ssm.StringParameter(this, "AlbArnSSMParam", {
+      parameterName: `${stack.stackName}.albArn`,
+      description: "The Arn of ALB",
+      stringValue: lb.loadBalancerArn,
     });
 
     new CfnOutput(this, "TrainingDataBucketName", {
