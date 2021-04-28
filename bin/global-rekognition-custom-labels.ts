@@ -22,9 +22,9 @@ import { GlobalRekognitionCustomLabelsGlobalAcceleratorStack } from "../lib/glob
   "ap-northeast-1",
   "ap-northeast-2",
 ];*/
-const serviceRegions = ["us-east-1", "us-east-2"]; // Region with Amazon Rekognition Custom Labels
-const managementRegion = "us-east-1"; // Region to deploy Managment tools
-const maximumModelTrainingTime = 180; // Maximum model training time.
+const serviceRegions = ["us-east-1", "us-east-2"]; // Region with Amazon Rekognition Custom Labels.
+const managementRegion = "us-east-1"; // Region to deploy Managment tools.
+const maximumModelTrainingTime = 180; // Maximum model training time in minutes.
 const reservedConcurrentExecutions = 1; // Reserved Concurrent Executions for call model Lambda.
 
 const app = new cdk.App();

@@ -24,20 +24,23 @@ manifest file will be replace the souce bucket name to the distination bucket na
 
 # delete-model-stepfunction
 Delete model and all versions
+
 {
-    "ProjectName": "DeepRacer",  	
+    "ProjectName": "AWSDeepRacer",  	
   	"VersionNames": []
 }
+
+
 Delete model and certain version
 {
-    "ProjectName": "DeepRacer",  	
+    "ProjectName": "AWSDeepRacer",  	
   	"VersionNames": ["first"]
 }
 
 
 # start-model-version-stepfunction
 {
-    "ProjectName": "DeepRacer",
+    "ProjectName": "AWSDeepRacer",
   	"VersionNames": ["first"],
   	"MinInferenceUnits": 1
 }
@@ -45,6 +48,6 @@ Delete model and certain version
 
 # stop-model-version-stepfunction
 {
-    "ProjectName": "DeepRacer",
+    "ProjectName": "AWSDeepRacer",
   	"VersionNames": ["first"],
 }
