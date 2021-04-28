@@ -10,7 +10,6 @@ import { RegionalData } from "../global-stepfunction-stack";
 import { Topic } from "@aws-cdk/aws-sns";
 
 export interface StopModelStepfunctionProps {
-  maximumModelBuildTime: Number;
   RegionalStacks: RegionalStack[];
   buildModelFunctionLayer: LayerVersion;
   regionalData: RegionalData[];
@@ -144,8 +143,8 @@ export class StopModelStepfunctionConstruct extends Construct {
       },
       itemsPath: sfn.JsonPath.stringAt("$.ProjectVersionArns"),
     });
-    const versionStatus = new sfn.Pass(this, "Version Stoped", {
-      comment: "Version Stoped",
+    const versionStatus = new sfn.Pass(this, "Version Stopped", {
+      comment: "Version Stopped",
     });
     const pass = new sfn.Pass(this, "Pass", {
       comment: "Pass",

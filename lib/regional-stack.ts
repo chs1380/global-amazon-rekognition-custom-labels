@@ -11,11 +11,20 @@ import * as targets from "@aws-cdk/aws-elasticloadbalancingv2-targets";
 import * as ec2 from "@aws-cdk/aws-ec2";
 import * as ssm from "@aws-cdk/aws-ssm";
 
+export interface GlobalRekognitionCustomLabelsRegionalStackProps
+  extends cdk.StackProps {
+  reservedConcurrentExecutions: Number;
+}
+
 export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
   public readonly trainingBucket: s3.Bucket;
   public readonly outputBucket: s3.Bucket;
 
-  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+  constructor(
+    scope: cdk.Construct,
+    id: string,
+    props: GlobalRekognitionCustomLabelsRegionalStackProps
+  ) {
     super(scope, id, props);
 
     // The code that defines your stack goes here
@@ -168,6 +177,7 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
       ),
       layers: [callModelLayer],
       timeout: Duration.minutes(3),
+      reservedConcurrentExecutions: +props.reservedConcurrentExecutions,
       environment: {
         getModelDetailsFunctionArn: getModelDetailsFunction.functionArn,
       },

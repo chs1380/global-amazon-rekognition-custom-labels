@@ -12,7 +12,6 @@ export interface RegionalStack {
   outputBucket: s3.Bucket;
 }
 interface GlobalRekognitionCustomLabelsS3StackProps extends cdk.StackProps {
-  maximumModelBuildTime: Number;
   RegionalStacks: RegionalStack[];
 }
 

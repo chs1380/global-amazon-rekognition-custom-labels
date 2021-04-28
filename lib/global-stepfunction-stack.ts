@@ -17,7 +17,7 @@ export interface RegionalData {
 
 export interface GlobalRekognitionCustomLabelsStepFunctionProps
   extends cdk.StackProps {
-  maximumModelBuildTime: Number;
+  maximumModelTrainingTime: Number;
   RegionalStacks: RegionalStack[];
 }
 
@@ -93,15 +93,15 @@ export class GlobalRekognitionCustomLabelsStepFunctionStack extends cdk.Stack {
       value: createBuiidModelStepfunctionConstruct.stateMachine.stateMachineArn,
       description: "Create Buiid Model Stepfunction",
     });
-        new CfnOutput(this, "DeleteModelStepfunction", {
+    new CfnOutput(this, "DeleteModelStepfunction", {
       value: deleteModelStepfunctionConstruct.stateMachine.stateMachineArn,
       description: "Delete Model Stepfunction",
     });
-        new CfnOutput(this, "StartModelStepfunction", {
+    new CfnOutput(this, "StartModelStepfunction", {
       value: startModelStepfunctionConstruct.stateMachine.stateMachineArn,
       description: "Start Model Stepfunction",
     });
-        new CfnOutput(this, "StopModelStepfunction", {
+    new CfnOutput(this, "StopModelStepfunction", {
       value: stopModelStepfunctionConstruct.stateMachine.stateMachineArn,
       description: "Stop Model Stepfunction",
     });

@@ -10,7 +10,6 @@ import { RegionalData } from "../global-stepfunction-stack";
 import { Topic } from "@aws-cdk/aws-sns";
 
 export interface DeleteModelStepfunctionProps {
-  maximumModelBuildTime: Number;
   RegionalStacks: RegionalStack[];
   buildModelFunctionLayer: LayerVersion;
   regionalData: RegionalData[];
@@ -125,7 +124,7 @@ export class DeleteModelStepfunctionConstruct extends Construct {
         outputPath: "$.Payload",
       }
     );
-    const deleteModel = new tasks.LambdaInvoke(this, "Delete Model", {
+    const deleteProject = new tasks.LambdaInvoke(this, "Delete Project", {
       lambdaFunction: deleteModelFunction,
       inputPath: "$",
       outputPath: "$.Payload",
@@ -136,7 +135,7 @@ export class DeleteModelStepfunctionConstruct extends Construct {
       result: { value: sfn.Result.fromArray(props.regionalData) },
       resultPath: "$.regions",
     });
-    const jobFailed = new sfn.Fail(this, "Delete Model Verison Failed", {
+    const jobFailed = new sfn.Fail(this, "Delete Verison Failed", {
       cause: "Project Verison Error.",
       error: "DescribeJob returned FAILED",
     });
@@ -173,8 +172,8 @@ export class DeleteModelStepfunctionConstruct extends Construct {
       },
       itemsPath: sfn.JsonPath.stringAt("$.ProjectVersionArns"),
     });
-    const versionStatus = new sfn.Pass(this, "Verion Deleted", {
-      comment: "Verion Deleted",
+    const versionStatus = new sfn.Pass(this, "Version Deleted", {
+      comment: "Version Deleted",
     });
     const pass = new sfn.Pass(this, "Pass", {
       comment: "Pass",
@@ -204,7 +203,7 @@ export class DeleteModelStepfunctionConstruct extends Construct {
       .next(waitX)
       .next(getStatus)
       .next(
-        new sfn.Choice(this, "Delete Versions Complete?")
+        new sfn.Choice(this, "Delete Version Complete?")
           .when(sfn.Condition.stringEquals("$.Status", "FAILED"), jobFailed)
           .when(
             sfn.Condition.numberGreaterThanEquals("$.Counter", 50),
@@ -223,7 +222,7 @@ export class DeleteModelStepfunctionConstruct extends Construct {
 
     deleteVersionMap.iterator(deleteVersionTasks);
 
-    const parallel = new sfn.Parallel(this, "Parallel Delete Model Version", {
+    const parallel = new sfn.Parallel(this, "Parallel Delete Version", {
       outputPath: "$.[0]",
     });
     parallel.branch(pass);
@@ -231,7 +230,7 @@ export class DeleteModelStepfunctionConstruct extends Construct {
     parallel.next(completeParallel);
     completeParallel.next(
       new sfn.Choice(this, "Delete Project?")
-        .when(sfn.Condition.isNotPresent("$.VersionNames[0]"), deleteModel)
+        .when(sfn.Condition.isNotPresent("$.VersionNames[0]"), deleteProject)
         .otherwise(keepProject)
     );
 

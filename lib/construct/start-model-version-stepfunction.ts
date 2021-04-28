@@ -10,7 +10,6 @@ import { RegionalData } from "../global-stepfunction-stack";
 import { Topic } from "@aws-cdk/aws-sns";
 
 export interface StartModelStepfunctionProps {
-  maximumModelBuildTime: Number;
   RegionalStacks: RegionalStack[];
   buildModelFunctionLayer: LayerVersion;
   regionalData: RegionalData[];

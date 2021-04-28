@@ -22,8 +22,10 @@ import { GlobalRekognitionCustomLabelsGlobalAcceleratorStack } from "../lib/glob
   "ap-northeast-1",
   "ap-northeast-2",
 ];*/
-const serviceRegions = ["us-east-1", "us-east-2"];
-const managementRegion = "us-east-1";
+const serviceRegions = ["us-east-1", "us-east-2"]; // Region with Amazon Rekognition Custom Labels
+const managementRegion = "us-east-1"; // Region to deploy Managment tools
+const maximumModelTrainingTime = 180; // Maximum model training time.
+const reservedConcurrentExecutions = 1; // Reserved Concurrent Executions for call model Lambda.
 
 const app = new cdk.App();
 
@@ -44,6 +46,7 @@ const createRegionalStack = (
         account: process.env.CDK_DEFAULT_ACCOUNT,
         region: region,
       },
+      reservedConcurrentExecutions,
     }
   );
   return {
@@ -65,7 +68,6 @@ const globalRekognitionCustomLabelsS3Stack = new GlobalRekognitionCustomLabelsS3
       account: process.env.CDK_DEFAULT_ACCOUNT,
       region: managementRegion,
     },
-    maximumModelBuildTime: 180, // in minute
     RegionalStacks: regionalStacks,
   }
 );
@@ -81,7 +83,7 @@ const globalRekognitionCustomLabelsStepFunctionStack = new GlobalRekognitionCust
       account: process.env.CDK_DEFAULT_ACCOUNT,
       region: managementRegion,
     },
-    maximumModelBuildTime: 180, // in minute
+    maximumModelTrainingTime,
     RegionalStacks: regionalStacks,
   }
 );

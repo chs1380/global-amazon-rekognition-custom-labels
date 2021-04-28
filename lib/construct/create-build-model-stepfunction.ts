@@ -12,7 +12,7 @@ import { RegionalData } from "../global-stepfunction-stack";
 import { Topic } from "@aws-cdk/aws-sns";
 
 export interface CreateBuiidModelStepfunctionProps {
-  maximumModelBuildTime: Number;
+  maximumModelTrainingTime: Number;
   RegionalStacks: RegionalStack[];
   buildModelFunctionLayer: LayerVersion;
   regionalData: RegionalData[];
@@ -120,7 +120,7 @@ export class CreateBuiidModelStepfunctionConstruct extends Construct {
           .when(
             sfn.Condition.numberGreaterThanEquals(
               "$.Counter",
-              Math.floor(+props.maximumModelBuildTime / 5)
+              Math.floor(+props.maximumModelTrainingTime / 5)
             ),
             jobFailed
           )
