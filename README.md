@@ -13,16 +13,16 @@ aws s3 sync s3://cyrus-datasets s3://custom-labels-global-111964674713us-east-1 
 manifest file will be replace the souce bucket name to the distination bucket name.
 
 
-## Sample Input Data for deplying Global Rekognition Custom Labels Model
-# create-build-model-stepfunction
+# Sample Input Data for deplying Global Rekognition Custom Labels Model
+## create-build-model-stepfunction
 {
-    "ProjectName": "DeepRacer",
+    "ProjectName": "AWSDeepRacer",
   	"ManifestKey":"assets/deepracerv1r/output.manifest",
   	"VersionName": "first"
 }
 
 
-# delete-model-stepfunction
+## delete-model-stepfunction
 Delete model and all versions
 
 {
@@ -39,7 +39,7 @@ Delete model and certain version
 }
 
 
-# start-model-version-stepfunction
+## start-model-version-stepfunction
 {
     "ProjectName": "AWSDeepRacer",
   	"VersionNames": ["first"],
@@ -47,7 +47,7 @@ Delete model and certain version
 }
 
 
-# stop-model-version-stepfunction
+## stop-model-version-stepfunction
 {
     "ProjectName": "AWSDeepRacer",
   	"VersionNames": ["first"]
