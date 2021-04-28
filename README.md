@@ -32,6 +32,7 @@ Delete model and all versions
 
 
 Delete model and certain version
+
 {
     "ProjectName": "AWSDeepRacer",  	
   	"VersionNames": ["first"]
@@ -49,5 +50,5 @@ Delete model and certain version
 # stop-model-version-stepfunction
 {
     "ProjectName": "AWSDeepRacer",
-  	"VersionNames": ["first"],
+  	"VersionNames": ["first"]
 }
