@@ -109,15 +109,28 @@ export class DeleteModelStepfunctionConstruct extends Construct {
         actions: ["rekognition:DescribeProjectVersions"],
       })
     );
-    const getModelDetails = new tasks.LambdaInvoke(this, "Get Model Details", {
-      lambdaFunction: getModelDetailsFunction,
-      inputPath: "$",
-      outputPath: "$.Payload",
-    });
+    const getModelDetails = new tasks.LambdaInvoke(
+      this,
+      "Get Version Details",
+      {
+        lambdaFunction: getModelDetailsFunction,
+        inputPath: "$",
+        outputPath: "$.Payload",
+      }
+    );
+    const getModelDetailsForDeleteProject = new tasks.LambdaInvoke(
+      this,
+      "Get Project Details",
+      {
+        lambdaFunction: getModelDetailsFunction,
+        inputPath: "$",
+        outputPath: "$.Payload",
+      }
+    );
 
     const deleteModelVersion = new tasks.LambdaInvoke(
       this,
-      "Delete Model Version",
+      "Delete Version Version",
       {
         lambdaFunction: deleteModelVersionFunction,
         inputPath: "$",
@@ -149,7 +162,7 @@ export class DeleteModelStepfunctionConstruct extends Construct {
     });
 
     const modelMap = new sfn.Map(this, "Map State", {
-      comment: "Parallel Map to create regional model.",
+      comment: "Parallel Map to delete regional model.",
       inputPath: "$",
       parameters: {
         "ProjectName.$": "$.ProjectName",
@@ -175,6 +188,10 @@ export class DeleteModelStepfunctionConstruct extends Construct {
     const versionStatus = new sfn.Pass(this, "Version Deleted", {
       comment: "Version Deleted",
     });
+
+    const startRegionalTask = new sfn.Parallel(this, "Start Regional Task", {
+      comment: "Start Regional Task",
+    });
     const pass = new sfn.Pass(this, "Pass", {
       comment: "Pass",
     });
@@ -186,6 +203,7 @@ export class DeleteModelStepfunctionConstruct extends Construct {
       "Complete Parallel Delete Version",
       {
         comment: "Complete Parallel Delete Version",
+        outputPath: "$[0]",
       }
     );
 
@@ -222,19 +240,19 @@ export class DeleteModelStepfunctionConstruct extends Construct {
 
     deleteVersionMap.iterator(deleteVersionTasks);
 
-    const parallel = new sfn.Parallel(this, "Parallel Delete Version", {
-      outputPath: "$.[0]",
-    });
-    parallel.branch(pass);
-    parallel.branch(deleteVersionMap);
-    parallel.next(completeParallel);
     completeParallel.next(
       new sfn.Choice(this, "Delete Project?")
-        .when(sfn.Condition.isNotPresent("$.VersionNames[0]"), deleteProject)
+        .when(
+          sfn.Condition.isNotPresent("$.VersionNames[0]"),
+          getModelDetailsForDeleteProject.next(deleteProject)
+        )
         .otherwise(keepProject)
     );
 
-    const regionalTasks = getModelDetails.next(parallel);
+    startRegionalTask.next(completeParallel);
+    const regionalTasks = startRegionalTask
+      .branch(pass)
+      .branch(getModelDetails.next(deleteVersionMap));
 
     modelMap.iterator(regionalTasks);
     const deleteModelDefinition = setRegionalData

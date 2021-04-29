@@ -31,7 +31,7 @@ Delete model and all versions
 }
 
 
-Delete model and certain version
+Delete a version
 
 {
     "ProjectName": "AWSDeepRacer",  	
