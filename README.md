@@ -6,9 +6,21 @@ This project helps you deploy and manage Amazon Rekognition Custom Labels projec
 2. ./deploy.sh
 
 ## Sample Command to copy dataset into management dataset bucket
-Dataset will replicate to all regional dataset bucket.
+You can get the AWS DeepRacer Dataset.
+Open new terminal in AWS Cloud9 and run the following commands.
+```
+git clone https://github.com/wongcyrus/deepracer_labeled_dataset
+cd deepracer_labeled_dataset
+find . | grep .git | xargs rm -rf
+```
+Create a S3 bucket in the region near you i.e. your-source-datasets in ap-east-1.
+```
+aws s3 sync s3://your-source-datasets . 
+```
 
-aws s3 sync s3://cyrus-datasets s3://custom-labels-global-111964674713us-east-1 --source-region ap-east-1 
+Then copy the Dataset to custom-labels-global source bucket and it will replicate to all regional dataset bucket.
+
+aws s3 sync s3://your-source-datasets s3://custom-labels-global-<your aws account id>us-east-1 --source-region ap-east-1 
 
 manifest file will be replace the souce bucket name to the distination bucket name.
 
