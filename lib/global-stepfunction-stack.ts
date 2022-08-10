@@ -1,13 +1,14 @@
-import * as cdk from "@aws-cdk/core";
-import * as lambda from "@aws-cdk/aws-lambda";
+import * as cdk from 'aws-cdk-lib';
+import * as lambda from "aws-cdk-lib/aws-lambda";
 import path = require("path");
 import { RegionalStack } from "./global-s3-stack";
 import { CreateBuiidModelStepfunctionConstruct } from "./construct/create-build-model-stepfunction";
 import { DeleteModelStepfunctionConstruct } from "./construct/delete-model-stepfunction";
-import * as sns from "@aws-cdk/aws-sns";
+import * as sns from "aws-cdk-lib/aws-sns";
 import { StartModelStepfunctionConstruct } from "./construct/start-model-version-stepfunction";
 import { StopModelStepfunctionConstruct } from "./construct/stop-model-version-stepfunction";
-import { CfnOutput } from "@aws-cdk/core";
+import { CfnOutput } from 'aws-cdk-lib';
+import { Construct } from 'constructs';
 
 export interface RegionalData {
   region: string;
@@ -23,7 +24,7 @@ export interface GlobalRekognitionCustomLabelsStepFunctionProps
 
 export class GlobalRekognitionCustomLabelsStepFunctionStack extends cdk.Stack {
   constructor(
-    scope: cdk.Construct,
+    scope: Construct,
     id: string,
     props: GlobalRekognitionCustomLabelsStepFunctionProps
   ) {

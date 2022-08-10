@@ -1,15 +1,16 @@
-import * as cdk from "@aws-cdk/core";
-import * as s3 from "@aws-cdk/aws-s3";
-import * as iam from "@aws-cdk/aws-iam";
-import { CfnOutput, RemovalPolicy, Duration } from "@aws-cdk/core";
-import { S3EventSource } from "@aws-cdk/aws-lambda-event-sources";
-import * as lambda from "@aws-cdk/aws-lambda";
+import * as cdk from 'aws-cdk-lib';
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as iam from "aws-cdk-lib/aws-iam";
+import { CfnOutput, RemovalPolicy, Duration } from 'aws-cdk-lib';
+import { S3EventSource } from "aws-cdk-lib/aws-lambda-event-sources";
+import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as path from "path";
-import { ManagedPolicy } from "@aws-cdk/aws-iam";
-import * as elbv2 from "@aws-cdk/aws-elasticloadbalancingv2";
-import * as targets from "@aws-cdk/aws-elasticloadbalancingv2-targets";
-import * as ec2 from "@aws-cdk/aws-ec2";
-import * as ssm from "@aws-cdk/aws-ssm";
+import { ManagedPolicy } from "aws-cdk-lib/aws-iam";
+import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import * as targets from "aws-cdk-lib/aws-elasticloadbalancingv2-targets";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
+import * as ssm from "aws-cdk-lib/aws-ssm";
+import { Construct } from 'constructs';
 
 export interface GlobalRekognitionCustomLabelsRegionalStackProps
   extends cdk.StackProps {
@@ -21,7 +22,7 @@ export class GlobalRekognitionCustomLabelsRegionalStack extends cdk.Stack {
   public readonly outputBucket: s3.Bucket;
 
   constructor(
-    scope: cdk.Construct,
+    scope: Construct,
     id: string,
     props: GlobalRekognitionCustomLabelsRegionalStackProps
   ) {

@@ -53,7 +53,7 @@ export const lambdaHandler = async (event: S3CreateEvent): Promise<String> => {
     // process data.
   } catch (error) {
     console.error(error);
-    return error;
+    return "" + error;
     // error handling.
   } finally {
     // finally.

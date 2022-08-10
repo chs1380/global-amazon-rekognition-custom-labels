@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import "source-map-support/register";
-import * as cdk from "@aws-cdk/core";
+import { App } from 'aws-cdk-lib';
 import { GlobalRekognitionCustomLabelsRegionalStack } from "../lib/regional-stack";
 import { GlobalRekognitionCustomLabelsS3Stack } from "../lib/global-s3-stack";
-import * as s3 from "@aws-cdk/aws-s3";
+import * as s3 from "aws-cdk-lib/aws-s3";
 import { GlobalRekognitionCustomLabelsStepFunctionStack } from "../lib/global-stepfunction-stack";
 import { GlobalRekognitionCustomLabelsGlobalAcceleratorStack } from "../lib/global-accelerator-stack";
 
@@ -27,7 +27,7 @@ const managementRegion = "us-east-1"; // Region to deploy Managment tools.
 const maximumModelTrainingTime = 180; // Maximum model training time in minutes.
 const reservedConcurrentExecutions = 1; // Reserved Concurrent Executions for call model Lambda.
 
-const app = new cdk.App();
+const app = new App();
 
 const createRegionalStack = (
   region: string

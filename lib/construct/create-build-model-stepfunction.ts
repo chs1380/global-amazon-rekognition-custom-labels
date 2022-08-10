@@ -1,15 +1,16 @@
-import { Construct, Duration } from "@aws-cdk/core";
-import * as sfn from "@aws-cdk/aws-stepfunctions";
-import * as tasks from "@aws-cdk/aws-stepfunctions-tasks";
-import * as lambda from "@aws-cdk/aws-lambda";
+import { Duration } from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+import * as sfn from "aws-cdk-lib/aws-stepfunctions";
+import * as tasks from "aws-cdk-lib/aws-stepfunctions-tasks";
+import * as lambda from "aws-cdk-lib/aws-lambda";
 import path = require("path");
-import { ManagedPolicy } from "@aws-cdk/aws-iam";
-import * as iam from "@aws-cdk/aws-iam";
+import { ManagedPolicy } from "aws-cdk-lib/aws-iam";
+import * as iam from "aws-cdk-lib/aws-iam";
 
-import { LayerVersion } from "@aws-cdk/aws-lambda";
+import { LayerVersion } from "aws-cdk-lib/aws-lambda";
 import { RegionalStack } from "../global-s3-stack";
 import { RegionalData } from "../global-stepfunction-stack";
-import { Topic } from "@aws-cdk/aws-sns";
+import { Topic } from "aws-cdk-lib/aws-sns";
 
 export interface CreateBuiidModelStepfunctionProps {
   maximumModelTrainingTime: Number;

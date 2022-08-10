@@ -1,9 +1,10 @@
-import * as cdk from "@aws-cdk/core";
-import * as s3 from "@aws-cdk/aws-s3";
-import * as iam from "@aws-cdk/aws-iam";
-import { CfnOutput, RemovalPolicy, Duration } from "@aws-cdk/core";
-import { Bucket, CfnBucket } from "@aws-cdk/aws-s3";
-import { Role } from "@aws-cdk/aws-iam";
+import * as cdk from 'aws-cdk-lib';
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as iam from "aws-cdk-lib/aws-iam";
+import { CfnOutput, RemovalPolicy, Duration } from 'aws-cdk-lib';
+import { Bucket, CfnBucket } from "aws-cdk-lib/aws-s3";
+import { Role } from "aws-cdk-lib/aws-iam";
+import { Construct } from 'constructs';
 
 export interface RegionalStack {
   region: string;
@@ -17,7 +18,7 @@ interface GlobalRekognitionCustomLabelsS3StackProps extends cdk.StackProps {
 
 export class GlobalRekognitionCustomLabelsS3Stack extends cdk.Stack {
   constructor(
-    scope: cdk.Construct,
+    scope: Construct,
     id: string,
     props: GlobalRekognitionCustomLabelsS3StackProps
   ) {

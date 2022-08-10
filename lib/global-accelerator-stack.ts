@@ -1,10 +1,11 @@
-import * as cdk from "@aws-cdk/core";
-import * as s3 from "@aws-cdk/aws-s3";
-import { CfnOutput } from "@aws-cdk/core";
-import globalaccelerator = require("@aws-cdk/aws-globalaccelerator");
-import ga_endpoints = require("@aws-cdk/aws-globalaccelerator-endpoints");
-import elbv2 = require("@aws-cdk/aws-elasticloadbalancingv2");
-import * as cr from "@aws-cdk/custom-resources";
+import * as cdk from 'aws-cdk-lib';
+import * as s3 from "aws-cdk-lib/aws-s3";
+import { CfnOutput } from 'aws-cdk-lib';
+import globalaccelerator = require("aws-cdk-lib/aws-globalaccelerator");
+import ga_endpoints = require("aws-cdk-lib/aws-globalaccelerator-endpoints");
+import elbv2 = require("aws-cdk-lib/aws-elasticloadbalancingv2");
+import * as cr from "aws-cdk-lib/custom-resources";
+import { Construct } from 'constructs';
 
 export interface RegionalStack {
   region: string;
@@ -19,7 +20,7 @@ interface GlobalRekognitionCustomLabelsGlobalAcceleratorStackProps
 
 export class GlobalRekognitionCustomLabelsGlobalAcceleratorStack extends cdk.Stack {
   constructor(
-    scope: cdk.Construct,
+    scope: Construct,
     id: string,
     props: GlobalRekognitionCustomLabelsGlobalAcceleratorStackProps
   ) {
